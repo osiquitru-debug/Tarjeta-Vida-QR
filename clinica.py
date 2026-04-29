@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-# Configuración de la página
+# Configuración de la página para dispositivos móviles y escritorio
 st.set_page_config(page_title="Historial Médico Pro", layout="centered")
 
 st.title("🩺 Gestión Médica Integral")
@@ -11,14 +11,21 @@ st.title("🩺 Gestión Médica Integral")
 # Conexión con Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Leer datos existentes
-df_pacientes = conn.read(worksheet="Pacientes")
-df_historial = conn.read(worksheet="Historial")
+# Enlace de tu hoja de cálculo
+url_hoja = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/edit?usp=sharing"
+
+# Leer datos existentes (Asegurando coincidencia con nombres en Sheets)
+try:
+    df_pacientes = conn.read(spreadsheet=url_hoja, worksheet="Pacientes")
+    df_historial = conn.read(spreadsheet=url_hoja, worksheet="Historial")
+except Exception as e:
+    st.error(f"Error al conectar con las pestañas. Revisa que se llamen 'Pacientes' e 'Historial'. Detalle: {e}")
+    st.stop()
 
 menu = ["Registrar Paciente", "Nueva Consulta", "Ver Base de Datos"]
 choice = st.sidebar.selectbox("Menú Principal", menu)
 
-# --- 1. REGISTRAR PACIENTE (CAMPOS AMPLIADOS) ---
+# --- 1. REGISTRAR PACIENTE ---
 if choice == "Registrar Paciente":
     st.subheader("📝 Ficha de Registro Inicial")
     with st.form("registro_form"):
@@ -48,27 +55,29 @@ if choice == "Registrar Paciente":
                     "Contacto Emergencia": emergencia_nombre,
                     "Telefono Emergencia": emergencia_tel
                 }])
-                df_actualizado = pd.concat([df_pacientes, nuevo_p], ignore_index=True)
-                conn.update(worksheet="Pacientes", data=df_actualizado)
+                # Actualizar hoja 'Pacientes'
+                df_act_p = pd.concat([df_pacientes, nuevo_p], ignore_index=True)
+                conn.update(spreadsheet=url_hoja, worksheet="Pacientes", data=df_act_p)
                 st.success(f"✅ Paciente {nombre} guardado con éxito")
+                st.balloons()
             else:
-                st.error("Por favor, llena al menos el nombre y el documento.")
+                st.error("El Nombre y Documento son obligatorios.")
 
 # --- 2. NUEVA CONSULTA ---
 elif choice == "Nueva Consulta":
     st.subheader("🔍 Registro de Evolución Médica")
-    doc_buscar = st.text_input("Ingrese Cédula para buscar")
+    doc_buscar = st.text_input("Ingrese Cédula del paciente para buscar")
     
     if doc_buscar:
+        # Buscamos asegurando que ambos sean tratados como texto para comparar
         paciente_info = df_pacientes[df_pacientes["Documento"].astype(str) == str(doc_buscar)]
         
         if not paciente_info.empty:
-            # Mostramos un resumen de emergencia destacado
             st.warning(f"""
             **DATOS VITALES:**
             * **Paciente:** {paciente_info.iloc[0]['Nombre']}
             * **RH:** {paciente_info.iloc[0]['RH']}
-            * **En caso de emergencia llamar a:** {paciente_info.iloc[0]['Contacto Emergencia']} ({paciente_info.iloc[0]['Telefono Emergencia']})
+            * **Emergencia:** {paciente_info.iloc[0]['Contacto Emergencia']} ({paciente_info.iloc[0]['Telefono Emergencia']})
             """)
             
             with st.form("consulta_form"):
@@ -84,18 +93,19 @@ elif choice == "Nueva Consulta":
                         "Medicamentos": medicamentos,
                         "Procedimiento": procedimiento
                     }])
-                    df_h_act = pd.concat([df_historial, nueva_entrada], ignore_index=True)
-                    conn.update(worksheet="Historial", data=df_h_act)
+                    # Actualizar hoja 'Historial'
+                    df_act_h = pd.concat([df_historial, nueva_entrada], ignore_index=True)
+                    conn.update(spreadsheet=url_hoja, worksheet="Historial", data=df_act_h)
                     st.success("✅ Historial médico actualizado")
         else:
-            st.error("El paciente no existe.")
+            st.error("Paciente no encontrado. Verifique el documento o regístrelo primero.")
 
 # --- 3. VER TODO ---
 elif choice == "Ver Base de Datos":
-    st.subheader("📊 Base de Datos Completa")
+    st.subheader("📊 Base de Datos en Tiempo Real")
     tab1, tab2 = st.tabs(["Lista de Pacientes", "Historial de Consultas"])
     
     with tab1:
-        st.dataframe(df_pacientes)
+        st.dataframe(df_pacientes, use_container_width=True)
     with tab2:
-        st.dataframe(df_historial)
+        st.dataframe(df_historial, use_container_width=True)
