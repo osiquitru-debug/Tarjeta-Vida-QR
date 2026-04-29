@@ -11,65 +11,63 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO Y ESTILOS (CONTRASTE TOTAL) ---
+# --- 2. DISEÑO Y ESTILOS (ULTRA-CONTRASTE) ---
 st.markdown("""
     <style>
-    /* Fondo general */
+    /* Fondo general claro */
     .stApp {
-        background-color: #f8fafc;
+        background-color: #ffffff !important;
     }
 
-    /* FORZAR VISIBILIDAD DE LABELS Y TÍTULOS DE SECCIÓN */
+    /* FORZAR COLOR DE TEXTO EN TODO EL FORMULARIO */
+    /* Esto asegura que lo que escribes sea negro */
+    input, textarea, select {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+
+    /* FORZAR COLOR DE LAS ETIQUETAS (LABELS) */
     label, .stMarkdown p, h1, h2, h3, .stSubheader {
         color: #1a4f7e !important; 
-        font-weight: 700 !important;
-    }
-
-    /* Estilo específico para los nombres de las pestañas (Tabs) */
-    button[data-baseweb="tab"] p {
-        color: #1a4f7e !important;
         font-weight: bold !important;
-        font-size: 1.1rem !important;
     }
 
-    /* Sidebar */
+    /* MENU LATERAL (SIDEBAR) - Visibilidad total */
     [data-testid="stSidebar"] {
         background-color: #1a4f7e !important;
     }
-    [data-testid="stSidebar"] * {
-        color: white !important;
+    /* Texto del menú lateral */
+    [data-testid="stSidebar"] .stSelectbox label, [data-testid="stSidebar"] p {
+        color: #ffffff !important;
     }
-
-    /* Tarjetas de Paciente */
-    .medical-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border-left: 6px solid #00c4cc;
-        margin-bottom: 20px;
-    }
-    .medical-card h3, .medical-card p {
+    /* El texto dentro de la caja de selección del menú */
+    [data-testid="stSidebar"] div[data-baseweb="select"] div {
         color: #1a4f7e !important;
+        background-color: #ffffff !important;
     }
 
-    /* Botones */
+    /* PESTAÑAS (TABS) - Visibilidad de nombres */
+    button[data-baseweb="tab"] p {
+        color: #1a4f7e !important;
+        font-weight: 800 !important;
+    }
+
+    /* BOTONES */
     div.stButton > button {
         background-color: #00c4cc !important;
-        color: white !important;
+        color: #ffffff !important;
         border-radius: 8px;
-        border: none;
         font-weight: bold;
-        height: 3em;
-    }
-    div.stButton > button:hover {
-        background-color: #1a4f7e !important;
+        border: 2px solid #1a4f7e;
     }
 
-    /* Inputs */
-    .stTextInput input, .stSelectbox div {
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
+    /* TARJETAS DE INFORMACIÓN */
+    .medical-card {
+        background-color: #f1f5f9;
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 8px solid #00c4cc;
+        color: #1a4f7e !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -105,14 +103,15 @@ with col2:
         logo_img = Image.open(io.BytesIO(resp.content))
         st.image(logo_img, use_container_width=True)
     except:
-        st.write("### Tarjeta Vida")
+        st.write("## Tarjeta Vida")
 
-st.markdown("<h1 style='text-align: center;'>Sistema Tarjeta Vida</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>Gestión Médica Profesional</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 6. NAVEGACIÓN ---
 menu = ["Registrar Paciente", "Consulta e Historial", "Ver Base de Datos"]
-choice = st.sidebar.selectbox("Menú Principal", menu)
+# Sidebar con estilo forzado
+choice = st.sidebar.selectbox("Seleccione una opción", menu)
 
 if choice == "Registrar Paciente":
     st.subheader("📝 Registro de Paciente")
@@ -138,13 +137,13 @@ if choice == "Registrar Paciente":
                     "entry.1892763134": e_nombre, "entry.2011749615": e_tel
                 }
                 if requests.post(URL_FORM_PACIENTES, data=payload).ok:
-                    st.success("✅ Paciente registrado.")
+                    st.success("✅ Paciente registrado con éxito.")
                     st.cache_data.clear()
             else: st.warning("⚠️ Nombre y Cédula son obligatorios.")
 
 elif choice == "Consulta e Historial":
     st.subheader("🔍 Consultar Expediente")
-    id_buscar = st.text_input("Cédula a buscar").strip()
+    id_buscar = st.text_input("Ingrese Cédula del Paciente").strip()
     
     if id_buscar and df_pacientes is not None:
         df_pacientes["DOCUMENTO"] = df_pacientes["DOCUMENTO"].astype(str).str.strip()
@@ -164,7 +163,7 @@ elif choice == "Consulta e Historial":
             if df_historial is not None:
                 df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
                 h = df_historial[df_historial["DOCUMENTO"] == id_buscar]
-                st.dataframe(h.iloc[::-1], use_container_width=True) if not h.empty else st.info("Sin registros.")
+                st.dataframe(h.iloc[::-1], use_container_width=True)
             
             st.subheader("✍️ Nueva Evolución")
             with st.form("hist_f", clear_on_submit=True):
@@ -173,12 +172,13 @@ elif choice == "Consulta e Historial":
                 if st.form_submit_button("Guardar Evolución"):
                     payload_h = {"entry.2019369477": id_buscar, "entry.611862537": trat, "entry.2016051626": obs}
                     if requests.post(URL_FORM_HISTORIAL, data=payload_h).ok:
-                        st.success("✅ Guardado.")
+                        st.success("✅ Evolución guardada.")
                         st.rerun()
-        else: st.error("No encontrado.")
+        else: st.error("Paciente no registrado.")
 
 else:
     st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["Pacientes Registrados", "Historial de Evoluciones"])
-    if df_pacientes is not None: t1.dataframe(df_pacientes)
-    if df_historial is not None: t2.dataframe(df_historial)
+    t1, t2 = st.tabs(["Pacientes", "Historial Completo"])
+    # Forzamos que el contenido de las tablas sea legible
+    if df_pacientes is not None: t1.write("### Lista de Pacientes"); t1.dataframe(df_pacientes)
+    if df_historial is not None: t2.write("### Registro de Atenciones"); t2.dataframe(df_historial)
