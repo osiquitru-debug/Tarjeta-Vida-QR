@@ -10,15 +10,21 @@ st.set_page_config(page_title="Tarjeta Vida", layout="centered", page_icon="🩺
 SHEET_ID = "18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
+# URLs de Google Forms (Escritura)
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 3. CARGA DE DATOS ---
+# --- 3. CARGA Y LIMPIEZA DE DATOS ---
 @st.cache_data(ttl=5)
 def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
+        
+        # Normalizamos encabezados: eliminamos espacios y pasamos a MAYÚSCULAS
+        p.columns = p.columns.str.strip().str.upper()
+        h.columns = h.columns.str.strip().str.upper()
+        
         return p, h
     except Exception as e:
         return None, None
@@ -78,26 +84,29 @@ elif choice == "Consulta e Historial":
     id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
     
     if id_buscar and df_pacientes is not None:
-        # Validación de seguridad para evitar el KeyError
-        col_busqueda = "Documento"
+        # Buscamos usando el nombre de columna normalizado
+        col_doc = "DOCUMENTO"
         
-        if col_busqueda in df_pacientes.columns:
-            df_pacientes[col_busqueda] = df_pacientes[col_busqueda].astype(str).str.strip()
-            pac_filtro = df_pacientes[df_pacientes[col_busqueda] == id_buscar]
+        if col_doc in df_pacientes.columns:
+            # Aseguramos que los datos de la columna sean texto y sin espacios
+            df_pacientes[col_doc] = df_pacientes[col_doc].astype(str).str.strip()
+            pac_filtro = df_pacientes[df_pacientes[col_doc] == id_buscar]
             
             if not pac_filtro.empty:
                 p = pac_filtro.iloc[0]
                 st.success("✅ Paciente localizado")
-                st.info(f"**Paciente:** {p.get('Nombre', 'N/A')} | **EPS:** {p.get('EPS', 'N/A')} | **RH:** {p.get('RH', 'N/A')}")
+                
+                # Usamos .get() con nombres en MAYÚSCULAS para evitar errores
+                st.info(f"**Paciente:** {p.get('NOMBRE', 'N/A')} | **EPS:** {p.get('EPS', 'N/A')} | **RH:** {p.get('RH', 'N/A')}")
                 
                 with st.expander("🚨 Ver Contacto de Emergencia"):
-                    st.write(f"**Nombre:** {p.get('Nombre contacto emergencia', 'No registrado')}")
-                    st.write(f"**Teléfono:** {p.get('Telefono contacto emergencia', 'No registrado')}")
+                    st.write(f"**Nombre:** {p.get('NOMBRE CONTACTO EMERGENCIA', 'No registrado')}")
+                    st.write(f"**Teléfono:** {p.get('TELEFONO CONTACTO EMERGENCIA', 'No registrado')}")
                 
                 with st.expander("📅 Ver Historial Anterior"):
-                    if df_historial is not None and "Documento" in df_historial.columns:
-                        df_historial["Documento"] = df_historial["Documento"].astype(str).str.strip()
-                        h_pac = df_historial[df_historial["Documento"] == id_buscar]
+                    if df_historial is not None and "DOCUMENTO" in df_historial.columns:
+                        df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
+                        h_pac = df_historial[df_historial["DOCUMENTO"] == id_buscar]
                         st.dataframe(h_pac, use_container_width=True) if not h_pac.empty else st.write("Sin registros.")
                 
                 st.write("---")
@@ -118,8 +127,8 @@ elif choice == "Consulta e Historial":
             else:
                 st.error("Paciente no encontrado.")
         else:
-            st.error(f"⚠️ Error de base de datos: No se encontró la columna '{col_busqueda}'.")
-            st.write("Columnas detectadas en tu Excel:", list(df_pacientes.columns))
+            st.error("⚠️ La columna 'DOCUMENTO' no existe en el Excel.")
+            st.write("Columnas detectadas:", list(df_pacientes.columns))
 
 # --- SECCIÓN 3: BASE DE DATOS ---
 elif choice == "Ver Base de Datos":
@@ -128,10 +137,5 @@ elif choice == "Ver Base de Datos":
     
     if df_pacientes is not None:
         with tab1: st.dataframe(df_pacientes, use_container_width=True)
-    else:
-        with tab1: st.error("No se pudo cargar 'pacientes'. Revisa el nombre de la pestaña.")
-
     if df_historial is not None:
         with tab2: st.dataframe(df_historial, use_container_width=True)
-    else:
-        with tab2: st.error("No se pudo cargar 'historial'.")
