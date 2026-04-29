@@ -162,4 +162,34 @@ elif choice == "Consulta e Historial":
             if df_historial is not None:
                 df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
                 h_previo = df_historial[df_historial["DOCUMENTO"] == id_buscar]
-                if
+                if not h_previo.empty:
+                    cols = [c for c in ["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_previo.columns]
+                    st.dataframe(h_previo[cols].iloc[::-1], use_container_width=True, hide_index=True)
+                else: st.info("Sin registros previos.")
+            
+            st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
+            st.subheader("✍️ Registrar Nueva Evolución")
+            with st.form("nueva_ev", clear_on_submit=True):
+                # Secciones solicitadas: Tratamiento, Medicamentos y Procedimientos
+                trat = st.text_input("Tratamiento")
+                meds = st.text_area("Medicamentos")
+                proc = st.text_area("Procedimientos")
+                
+                if st.form_submit_button("GUARDAR EN EL HISTORIAL"):
+                    payload_h = {
+                        "entry.2019369477": id_buscar, 
+                        "entry.611862537": trat, 
+                        "entry.2016051626": meds,
+                        "entry.TU_ID_PROCEDIMIENTOS": proc # Reemplazar con ID real
+                    }
+                    requests.post(URL_FORM_HISTORIAL, data=payload_h)
+                    st.success("✅ Evolución guardada exitosamente.")
+                    st.cache_data.clear()
+                    st.rerun()
+        else: st.error("Paciente no encontrado.")
+
+else:
+    st.subheader("📊 Bases de Datos")
+    t1, t2 = st.tabs(["Pacientes", "Historial General"])
+    if df_pacientes is not None: t1.dataframe(df_pacientes)
+    if df_historial is not None: t2.dataframe(df_historial)
