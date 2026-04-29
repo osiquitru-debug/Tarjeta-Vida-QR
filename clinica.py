@@ -10,7 +10,6 @@ st.set_page_config(page_title="Tarjeta Vida", layout="centered", page_icon="🩺
 SHEET_ID = "18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
-# URLs de Google Forms (Escritura)
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
@@ -21,7 +20,7 @@ def cargar_datos():
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         
-        # Normalizamos encabezados: eliminamos espacios y pasamos a MAYÚSCULAS
+        # Normalizamos encabezados a MAYÚSCULAS y sin espacios
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
         
@@ -84,11 +83,9 @@ elif choice == "Consulta e Historial":
     id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
     
     if id_buscar and df_pacientes is not None:
-        # Buscamos usando el nombre de columna normalizado
         col_doc = "DOCUMENTO"
         
         if col_doc in df_pacientes.columns:
-            # Aseguramos que los datos de la columna sean texto y sin espacios
             df_pacientes[col_doc] = df_pacientes[col_doc].astype(str).str.strip()
             pac_filtro = df_pacientes[df_pacientes[col_doc] == id_buscar]
             
@@ -96,18 +93,22 @@ elif choice == "Consulta e Historial":
                 p = pac_filtro.iloc[0]
                 st.success("✅ Paciente localizado")
                 
-                # Usamos .get() con nombres en MAYÚSCULAS para evitar errores
                 st.info(f"**Paciente:** {p.get('NOMBRE', 'N/A')} | **EPS:** {p.get('EPS', 'N/A')} | **RH:** {p.get('RH', 'N/A')}")
                 
                 with st.expander("🚨 Ver Contacto de Emergencia"):
                     st.write(f"**Nombre:** {p.get('NOMBRE CONTACTO EMERGENCIA', 'No registrado')}")
                     st.write(f"**Teléfono:** {p.get('TELEFONO CONTACTO EMERGENCIA', 'No registrado')}")
                 
-                with st.expander("📅 Ver Historial Anterior"):
+                with st.expander("📅 Ver Historial Anterior", expanded=False):
                     if df_historial is not None and "DOCUMENTO" in df_historial.columns:
                         df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
                         h_pac = df_historial[df_historial["DOCUMENTO"] == id_buscar]
-                        st.dataframe(h_pac, use_container_width=True) if not h_pac.empty else st.write("Sin registros.")
+                        
+                        # CORRECCIÓN DE VISUALIZACIÓN AQUÍ:
+                        if not h_pac.empty:
+                            st.dataframe(h_pac, use_container_width=True)
+                        else:
+                            st.write("No se encontraron registros médicos previos.")
                 
                 st.write("---")
                 st.write("📝 **Nueva Entrada de Evolución**")
@@ -124,11 +125,11 @@ elif choice == "Consulta e Historial":
                         if requests.post(URL_FORM_HISTORIAL, data=payload_h).ok:
                             st.success("✅ Evolución guardada correctamente.")
                             st.cache_data.clear()
+                            st.rerun() # Recarga la app para mostrar el nuevo historial
             else:
                 st.error("Paciente no encontrado.")
         else:
             st.error("⚠️ La columna 'DOCUMENTO' no existe en el Excel.")
-            st.write("Columnas detectadas:", list(df_pacientes.columns))
 
 # --- SECCIÓN 3: BASE DE DATOS ---
 elif choice == "Ver Base de Datos":
