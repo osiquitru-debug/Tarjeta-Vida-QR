@@ -11,57 +11,50 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO EN TONOS PASTEL (ALTA LEGIBILIDAD) ---
+# --- 2. DISEÑO EN TONOS PASTEL ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Visibilidad de texto en casillas: Negro sobre Blanco */
     input, textarea, [data-baseweb="select"] {
         color: #000000 !important;
         background-color: #ffffff !important;
         border: 1.5px solid #a2d2ff !important;
     }
 
-    /* Etiquetas y Títulos */
     label, p, h1, h2, h3, .stSubheader {
         color: #2d3748 !important; 
         font-weight: bold !important;
     }
 
-    /* Menú Lateral Lavanda */
     [data-testid="stSidebar"] {
         background-color: #f3e8ff !important;
         border-right: 2px solid #e9d5ff;
     }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
-        color: #581c87 !important;
-    }
 
-    /* Botones Menta */
     div.stButton > button {
         background-color: #99f6e4 !important;
         color: #134e4a !important;
         border-radius: 12px;
         font-weight: bold !important;
         border: 1px solid #5eead4;
-        height: 3em;
     }
 
-    /* Tarjetas de Información */
     .medical-card {
         background-color: #ffffff;
-        padding: 20px;
+        padding: 22px;
         border-radius: 15px;
-        border-left: 10px solid #b2f5ea;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border-left: 12px solid #b2f5ea;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
     }
     
-    /* Estilo para el separador de secciones */
-    .section-divider {
-        margin-top: 20px;
-        margin-bottom: 10px;
-        border-bottom: 2px dashed #a2d2ff;
+    .emergency-box {
+        background-color: #fff5f5;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px dashed #feb2b2;
+        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -76,7 +69,7 @@ URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:cs
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN DE CARGA ---
+# --- 4. CARGA DE DATOS ---
 @st.cache_data(ttl=2)
 def cargar_datos():
     try:
@@ -104,24 +97,23 @@ st.markdown("---")
 # --- 6. NAVEGACIÓN ---
 choice = st.sidebar.selectbox("MENÚ PRINCIPAL", ["Registrar Paciente", "Consulta e Historial", "Base de Datos"])
 
-# --- SECCIÓN 1: REGISTRO ---
+# --- SECCIÓN: REGISTRO ---
 if choice == "Registrar Paciente":
-    st.subheader("📝 Nuevo Registro de Usuario")
-    with st.form("registro_completo", clear_on_submit=True):
-        st.markdown("### 👤 Datos Personales")
+    st.subheader("📝 Nuevo Registro")
+    with st.form("f_reg", clear_on_submit=True):
+        st.markdown("### 👤 Datos del Paciente")
         c1, c2 = st.columns(2)
         nombre = c1.text_input("Nombre Completo")
         doc = c2.text_input("Documento de Identidad")
         edad = c1.text_input("Edad")
         rh = c2.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         eps = c1.text_input("EPS")
-        celular = c2.text_input("Teléfono Celular")
+        cel = c2.text_input("Celular")
         
-        # SECCIÓN DIVIDIDA PARA EMERGENCIA
-        st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
+        st.markdown("---")
         st.markdown("### 🚨 Contacto de Emergencia")
         ce1, ce2 = st.columns(2)
-        e_nombre = ce1.text_input("Nombre del contacto de emergencia")
+        e_nom = ce1.text_input("Nombre del contacto de emergencia")
         e_tel = ce2.text_input("Teléfono de contacto de emergencia")
         
         if st.form_submit_button("GUARDAR REGISTRO"):
@@ -129,18 +121,18 @@ if choice == "Registrar Paciente":
                 payload = {
                     "entry.346175428": nombre, "entry.1302424820": doc,
                     "entry.1801154005": edad, "entry.162368130": rh,
-                    "entry.1043165037": celular, "entry.1172011247": eps,
-                    "entry.1892763134": e_nombre, "entry.2011749615": e_tel
+                    "entry.1043165037": cel, "entry.1172011247": eps,
+                    "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success(f"✅ Paciente {nombre} guardado.")
+                st.success(f"✅ Registrado exitosamente.")
                 st.cache_data.clear()
-            else: st.error("⚠️ Nombre y Documento son obligatorios.")
+            else: st.error("⚠️ Datos obligatorios faltantes.")
 
-# --- SECCIÓN 2: CONSULTA E HISTORIAL ---
+# --- SECCIÓN: CONSULTA E HISTORIAL (CORREGIDA) ---
 elif choice == "Consulta e Historial":
     st.subheader("🔍 Evolución y Antecedentes")
-    id_buscar = st.text_input("Ingrese Cédula del paciente").strip()
+    id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
     
     if id_buscar and df_pacientes is not None:
         df_pacientes["DOCUMENTO"] = df_pacientes["DOCUMENTO"].astype(str).str.strip()
@@ -148,48 +140,51 @@ elif choice == "Consulta e Historial":
         
         if not p_data.empty:
             p = p_data.iloc[0]
+            
+            # Obtener datos de emergencia con nombres exactos de columnas
+            emergencia_nombre = p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'No registrado')
+            emergencia_tel = p.get('TELEFONO DE CONTACTO DE EMERGENCIA', 'No registrado')
+
             st.markdown(f"""
             <div class="medical-card">
                 <h3 style='margin:0; color:#2d3748;'>👤 {p.get('NOMBRE', 'N/A')}</h3>
-                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
-                <hr style='border: 0.5px solid #a2d2ff;'>
-                <p style='color: #d9534f;'><b>🚨 EMERGENCIA:</b> {p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'N/A')} 
-                <br><b>📞 TELÉFONO:</b> {p.get('TELEFONO DE CONTACTO DE EMERGENCIA', 'N/A')}</p>
+                <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>EPS:</b> {p.get('EPS', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <div class="emergency-box">
+                    <p style='margin:0; color:#c53030;'><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
+                    <p style='margin:0; color:#2d3748;'>{emergencia_nombre} — <b>Tel:</b> {emergencia_tel}</p>
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
-            st.subheader("📅 Historial de Atenciones")
+            st.subheader("📅 Historial Clínico")
             if df_historial is not None:
                 df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
                 h_previo = df_historial[df_historial["DOCUMENTO"] == id_buscar]
                 if not h_previo.empty:
+                    # Mostrar Tratamiento, Medicamentos y Procedimientos
                     cols = [c for c in ["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_previo.columns]
                     st.dataframe(h_previo[cols].iloc[::-1], use_container_width=True, hide_index=True)
                 else: st.info("Sin registros previos.")
             
-            st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
+            st.markdown("---")
             st.subheader("✍️ Registrar Nueva Evolución")
-            with st.form("nueva_ev", clear_on_submit=True):
-                # Secciones solicitadas: Tratamiento, Medicamentos y Procedimientos
-                trat = st.text_input("Tratamiento")
-                meds = st.text_area("Medicamentos")
-                proc = st.text_area("Procedimientos")
-                
-                if st.form_submit_button("GUARDAR EN EL HISTORIAL"):
+            with st.form("ev_f", clear_on_submit=True):
+                t = st.text_input("Tratamiento")
+                m = st.text_area("Medicamentos")
+                pr = st.text_area("Procedimientos")
+                if st.form_submit_button("GUARDAR EVOLUCIÓN"):
                     payload_h = {
-                        "entry.2019369477": id_buscar, 
-                        "entry.611862537": trat, 
-                        "entry.2016051626": meds,
-                        "entry.TU_ID_PROCEDIMIENTOS": proc # Reemplazar con ID real
+                        "entry.2019369477": id_buscar, "entry.611862537": t, 
+                        "entry.2016051626": m, "entry.ID_PROC": pr # RECUERDA ACTUALIZAR ID_PROC
                     }
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                    st.success("✅ Evolución guardada exitosamente.")
+                    st.success("✅ Guardado.")
                     st.cache_data.clear()
                     st.rerun()
         else: st.error("Paciente no encontrado.")
 
 else:
     st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["Pacientes", "Historial General"])
+    t1, t2 = st.tabs(["Pacientes", "Historial"])
     if df_pacientes is not None: t1.dataframe(df_pacientes)
     if df_historial is not None: t2.dataframe(df_historial)
