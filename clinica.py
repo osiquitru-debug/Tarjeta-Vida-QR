@@ -6,56 +6,55 @@ from datetime import datetime
 # 1. Configuración de la página
 st.set_page_config(page_title="Tarjeta Vida", layout="centered")
 
-# 2. Configuración de la conexión
-# Usamos el ID de tu hoja que ya comprobamos que funciona
+# 2. Configuración de IDs y Conexión
+# Tu ID de hoja verificado
 sheet_id = "18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0"
 url_lectura_publica = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
 
-# Conexión oficial para escritura (Usa los Secrets de Streamlit)
+# Conexión para ESCRITURA (usa los Secrets configurados en Streamlit)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 3. Función para cargar datos (Lectura ultra-estable)
-@st.cache_data(ttl=10) # Se refresca cada 10 segundos
+# 3. Carga de datos estable
+@st.cache_data(ttl=10)
 def cargar_datos():
     try:
-        # Leemos mediante el método de publicación web que nos dio éxito
+        # Intentamos leer de la publicación web para asegurar que siempre haya datos
         p = pd.read_csv(f"{url_lectura_publica}&sheet=Pacientes")
         h = pd.read_csv(f"{url_lectura_publica}&sheet=Historial")
         return p, h
     except Exception as e:
+        st.error(f"Error de conexión: {e}")
         return None, None
 
 df_pacientes, df_historial = cargar_datos()
 
-# Verificación de conexión
-if df_pacientes is None:
-    st.error("⚠️ Error de conexión con la base de datos.")
-    st.info("Asegúrate de que el archivo de Google Sheets esté 'Publicado en la Web'.")
-    st.stop()
-
-# 4. Interfaz de Usuario
+# 4. Título e Interfaz
 st.title("🩺 Tarjeta Vida")
+st.markdown("---")
+
 menu = ["Registrar Paciente", "Nueva Consulta", "Ver Base de Datos"]
 choice = st.sidebar.selectbox("Menú Principal", menu)
 
 # --- OPCIÓN 1: REGISTRAR PACIENTE ---
 if choice == "Registrar Paciente":
-    st.subheader("📝 Registro de Nueva Tarjeta Vida")
-    with st.form("registro_form"):
+    st.subheader("📝 Crear Nueva Tarjeta Vida")
+    
+    with st.form("registro_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         nombre = col1.text_input("Nombre Completo")
         documento = col2.text_input("Cédula/ID")
-        edad = col1.number_input("Edad", 0, 120)
-        rh = col2.selectbox("RH (Grupo Sanguíneo)", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        celular = col1.text_input("Número de Celular")
-        st.markdown("---")
-        st.write("**Contacto de Emergencia**")
+        edad = col1.number_input("Edad", 0, 120, value=25)
+        rh = col2.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        celular = col1.text_input("Teléfono Celular")
+        
+        st.write("**En caso de emergencia avisar a:**")
         e_nombre = col1.text_input("Nombre del Contacto")
         e_tel = col2.text_input("Teléfono del Contacto")
         
-        if st.form_submit_button("Guardar Registro"):
+        btn_guardar = st.form_submit_button("Guardar Registro Permanente")
+        
+        if btn_guardar:
             if nombre and documento:
-                # Crear el nuevo registro en un DataFrame
                 nuevo_p = pd.DataFrame([{
                     "Nombre": nombre, 
                     "Documento": documento, 
@@ -67,39 +66,44 @@ if choice == "Registrar Paciente":
                 }])
                 
                 try:
-                    # Combinamos datos viejos con el nuevo y subimos a Google Sheets
+                    # Unimos los datos actuales con el nuevo
                     df_actualizado = pd.concat([df_pacientes, nuevo_p], ignore_index=True)
+                    
+                    # EJECUCIÓN DEL GUARDADO
                     conn.update(worksheet="Pacientes", data=df_actualizado)
                     
-                    st.success(f"✅ ¡Tarjeta Vida de {nombre} creada con éxito!")
+                    st.success(f"✅ ¡Tarjeta de {nombre} guardada exitosamente!")
                     st.balloons()
-                    st.cache_data.clear() # Limpiamos memoria para ver el cambio
-                except Exception as e:
-                    st.error("❌ Error al guardar. Verifica que el permiso en Google Sheets sea 'EDITOR'.")
+                    st.cache_data.clear() # Limpia cache para mostrar el nuevo dato
+                except Exception as error:
+                    st.error("❌ No se pudo guardar en Google Sheets.")
+                    st.info(f"Detalle técnico: {error}")
+                    st.warning("Asegúrate de que el permiso en el botón COMPARTIR sea 'EDITOR' para cualquier persona con el enlace.")
             else:
-                st.warning("Por favor, llena el Nombre y la Cédula.")
+                st.warning("⚠️ El Nombre y el Documento son obligatorios.")
 
-# --- OPCIÓN 2: NUEVA CONSULTA (EVOLUCIÓN) ---
+# --- OPCIÓN 2: NUEVA CONSULTA ---
 elif choice == "Nueva Consulta":
     st.subheader("🔍 Evolución Médica")
-    busqueda = st.text_input("Ingrese Cédula del paciente")
+    id_buscar = st.text_input("Buscar por Cédula")
     
-    if busqueda:
-        # Buscamos al paciente por documento
-        paciente = df_pacientes[df_pacientes["Documento"].astype(str) == str(busqueda)]
+    if id_buscar:
+        # Búsqueda flexible (convirtiendo a string)
+        resultado = df_pacientes[df_pacientes["Documento"].astype(str) == str(id_buscar)]
         
-        if not paciente.empty:
-            st.warning(f"**Paciente:** {paciente.iloc[0]['Nombre']} | **RH:** {paciente.iloc[0]['RH']}")
-            st.write(f"📞 **Emergencia:** {paciente.iloc[0]['Contacto Emergencia']} ({paciente.iloc[0]['Telefono Emergencia']})")
+        if not resultado.empty:
+            p_data = resultado.iloc[0]
+            st.info(f"**Paciente:** {p_data['Nombre']} | **RH:** {p_data['RH']}")
+            st.write(f"🚑 **Contacto:** {p_data['Contacto Emergencia']} ({p_data['Telefono Emergencia']})")
             
-            with st.form("consulta_form"):
-                tratamiento = st.text_input("Tratamiento Actual")
-                medicamentos = st.text_area("Medicamentos / Observaciones")
-                procedimiento = st.text_area("Procedimientos Realizados")
+            with st.form("consulta_form", clear_on_submit=True):
+                tratamiento = st.text_input("Tratamiento")
+                medicamentos = st.text_area("Observaciones / Medicamentos")
+                procedimiento = st.text_area("Procedimiento realizado")
                 
                 if st.form_submit_button("Actualizar Historial"):
-                    nueva_consulta = pd.DataFrame([{
-                        "Documento": busqueda,
+                    nueva_fila = pd.DataFrame([{
+                        "Documento": id_buscar,
                         "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
                         "Tratamiento": tratamiento,
                         "Medicamentos": medicamentos,
@@ -107,22 +111,5 @@ elif choice == "Nueva Consulta":
                     }])
                     
                     try:
-                        # Actualizamos la pestaña 'Historial'
-                        df_h_act = pd.concat([df_historial, nueva_consulta], ignore_index=True)
-                        conn.update(worksheet="Historial", data=df_h_act)
-                        st.success("✅ Historial de Tarjeta Vida actualizado")
-                        st.cache_data.clear()
-                    except:
-                        st.error("No se pudo guardar la evolución.")
-        else:
-            st.error("Documento no encontrado en el sistema Tarjeta Vida.")
-
-# --- OPCIÓN 3: VER BASE DE DATOS ---
-elif choice == "Ver Base de Datos":
-    st.subheader("📊 Base de Datos Tarjeta Vida")
-    tab1, tab2 = st.tabs(["Pacientes", "Historiales"])
-    
-    with tab1:
-        st.dataframe(df_pacientes, use_container_width=True)
-    with tab2:
-        st.dataframe(df_historial, use_container_width=True)
+                        df_h_act = pd.concat([df_historial, nueva_fila], ignore_index=True)
+                        conn.update(worksheet="Historial", data=
