@@ -11,38 +11,33 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO Y ESTILOS (BASADOS EN LA PALETA DEL LOGO) ---
+# --- 2. DISEÑO Y ESTILOS (CONTRASTE TOTAL) ---
 st.markdown("""
     <style>
     /* Fondo general */
     .stApp {
-        background-color: #f0f4f8;
+        background-color: #f8fafc;
     }
 
-    /* FORZAR VISIBILIDAD DE LABELS (ETIQUETAS) */
-    label, .stMarkdown p, .stSelectbox label, .stTextInput label {
-        color: #1a4f7e !important; /* Azul oscuro del logo para etiquetas */
-        font-weight: 600 !important;
-        font-size: 1rem !important;
+    /* FORZAR VISIBILIDAD DE LABELS Y TÍTULOS DE SECCIÓN */
+    label, .stMarkdown p, h1, h2, h3, .stSubheader {
+        color: #1a4f7e !important; 
+        font-weight: 700 !important;
     }
 
-    /* Sidebar - Azul profundo */
+    /* Estilo específico para los nombres de las pestañas (Tabs) */
+    button[data-baseweb="tab"] p {
+        color: #1a4f7e !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Sidebar */
     [data-testid="stSidebar"] {
         background-color: #1a4f7e !important;
     }
     [data-testid="stSidebar"] * {
         color: white !important;
-    }
-
-    /* Títulos */
-    h1 {
-        color: #1a4f7e;
-        text-align: center;
-        font-weight: bold;
-    }
-    h2, h3 {
-        color: #008b8b; /* Tono cian oscuro */
-        border-bottom: 2px solid #00c4cc;
     }
 
     /* Tarjetas de Paciente */
@@ -53,28 +48,28 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         border-left: 6px solid #00c4cc;
         margin-bottom: 20px;
-        color: #2d3748;
+    }
+    .medical-card h3, .medical-card p {
+        color: #1a4f7e !important;
     }
 
-    /* Botones - Cian del logo */
+    /* Botones */
     div.stButton > button {
         background-color: #00c4cc !important;
         color: white !important;
         border-radius: 8px;
         border: none;
         font-weight: bold;
-        transition: 0.3s;
+        height: 3em;
     }
     div.stButton > button:hover {
         background-color: #1a4f7e !important;
-        box-shadow: 0 4px 12px rgba(0, 196, 204, 0.4);
     }
 
-    /* Contenedor del logo */
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 10px;
+    /* Inputs */
+    .stTextInput input, .stSelectbox div {
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -103,39 +98,38 @@ def cargar_datos():
 df_pacientes, df_historial = cargar_datos()
 
 # --- 5. CABECERA ---
-st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-try:
-    # Intento de carga robusta
-    resp = requests.get(URL_LOGO_DIRECTA)
-    logo_img = Image.open(io.BytesIO(resp.content))
-    st.image(logo_img, width=300)
-except:
-    st.warning("⚠️ El logo no pudo cargarse desde Drive. Revisa que el enlace sea público.")
-st.markdown("</div>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    try:
+        resp = requests.get(URL_LOGO_DIRECTA)
+        logo_img = Image.open(io.BytesIO(resp.content))
+        st.image(logo_img, use_container_width=True)
+    except:
+        st.write("### Tarjeta Vida")
 
-st.title("Sistema Tarjeta Vida")
+st.markdown("<h1 style='text-align: center;'>Sistema Tarjeta Vida</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 6. NAVEGACIÓN ---
 menu = ["Registrar Paciente", "Consulta e Historial", "Ver Base de Datos"]
-choice = st.sidebar.selectbox("Seleccione una opción", menu)
+choice = st.sidebar.selectbox("Menú Principal", menu)
 
 if choice == "Registrar Paciente":
-    st.subheader("📝 Formulario de Registro")
+    st.subheader("📝 Registro de Paciente")
     with st.form("registro_p", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        nombre = col1.text_input("Nombre Completo del Paciente")
-        documento = col2.text_input("Número de Documento (Cédula)")
-        edad = col1.text_input("Edad Actual")
-        rh = col2.selectbox("Grupo Sanguíneo (RH)", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        eps = col1.text_input("Nombre de la EPS")
-        celular = col2.text_input("Número de Celular")
+        col_a, col_b = st.columns(2)
+        nombre = col_a.text_input("Nombre Completo")
+        documento = col_b.text_input("Número de Cédula")
+        edad = col_a.text_input("Edad")
+        rh = col_b.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        eps = col_a.text_input("EPS")
+        celular = col_b.text_input("Celular")
         
-        st.markdown("### 🚨 Contacto de Emergencia")
-        e_nombre = col1.text_input("Nombre del contacto de emergencia")
-        e_tel = col2.text_input("Teléfono del contacto de emergencia")
+        st.subheader("🚨 Contacto de Emergencia")
+        e_nombre = col_a.text_input("Nombre contacto")
+        e_tel = col_b.text_input("Teléfono contacto")
         
-        if st.form_submit_button("Guardar Datos del Paciente"):
+        if st.form_submit_button("Guardar Registro"):
             if nombre and documento:
                 payload = {
                     "entry.346175428": nombre, "entry.1302424820": documento,
@@ -144,13 +138,13 @@ if choice == "Registrar Paciente":
                     "entry.1892763134": e_nombre, "entry.2011749615": e_tel
                 }
                 if requests.post(URL_FORM_PACIENTES, data=payload).ok:
-                    st.success("✅ Registro exitoso.")
+                    st.success("✅ Paciente registrado.")
                     st.cache_data.clear()
-            else: st.warning("⚠️ El nombre y documento son obligatorios.")
+            else: st.warning("⚠️ Nombre y Cédula son obligatorios.")
 
 elif choice == "Consulta e Historial":
     st.subheader("🔍 Consultar Expediente")
-    id_buscar = st.text_input("Ingrese la Cédula a buscar").strip()
+    id_buscar = st.text_input("Cédula a buscar").strip()
     
     if id_buscar and df_pacientes is not None:
         df_pacientes["DOCUMENTO"] = df_pacientes["DOCUMENTO"].astype(str).str.strip()
@@ -161,30 +155,30 @@ elif choice == "Consulta e Historial":
             st.markdown(f"""
             <div class="medical-card">
                 <h3>👤 {p.get('NOMBRE', 'N/A')}</h3>
-                <p><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <p><b>Cédula:</b> {p.get('DOCUMENTO', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')}</p>
             </div>
             """, unsafe_allow_html=True)
             
-            with st.expander("📅 Historial de Atenciones"):
-                if df_historial is not None:
-                    df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
-                    h = df_historial[df_historial["DOCUMENTO"] == id_buscar]
-                    st.dataframe(h.iloc[::-1], use_container_width=True) if not h.empty else st.info("No hay historial.")
+            st.subheader("📅 Historial Clínico")
+            if df_historial is not None:
+                df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
+                h = df_historial[df_historial["DOCUMENTO"] == id_buscar]
+                st.dataframe(h.iloc[::-1], use_container_width=True) if not h.empty else st.info("Sin registros.")
             
-            st.subheader("✍️ Registrar Evolución Médica")
+            st.subheader("✍️ Nueva Evolución")
             with st.form("hist_f", clear_on_submit=True):
-                trat = st.text_input("Diagnóstico / Tratamiento")
-                obs = st.text_area("Notas y Medicamentos")
+                trat = st.text_input("Tratamiento")
+                obs = st.text_area("Observaciones")
                 if st.form_submit_button("Guardar Evolución"):
                     payload_h = {"entry.2019369477": id_buscar, "entry.611862537": trat, "entry.2016051626": obs}
                     if requests.post(URL_FORM_HISTORIAL, data=payload_h).ok:
-                        st.success("✅ Evolución guardada.")
+                        st.success("✅ Guardado.")
                         st.rerun()
-        else: st.error("Paciente no encontrado.")
+        else: st.error("No encontrado.")
 
 else:
-    st.subheader("📊 Bases de Datos del Sistema")
-    t1, t2 = st.tabs(["Listado de Pacientes", "Historial de Evoluciones"])
+    st.subheader("📊 Bases de Datos")
+    t1, t2 = st.tabs(["Pacientes Registrados", "Historial de Evoluciones"])
     if df_pacientes is not None: t1.dataframe(df_pacientes)
     if df_historial is not None: t2.dataframe(df_historial)
