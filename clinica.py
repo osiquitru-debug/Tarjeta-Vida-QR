@@ -6,20 +6,20 @@ from datetime import datetime
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida", layout="centered", page_icon="🩺")
 
-# --- 2. VARIABLES DE CONEXIÓN (Google Sheets y Forms) ---
-# Lectura desde Google Sheets (Publicado en la web)
+# --- 2. VARIABLES DE CONEXIÓN ---
+# Lectura (Google Sheets Publicado)
 SHEET_ID = "18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
-# Escritura vía Google Forms (IMPORTANTE: terminan en /formResponse)
+# Escritura (Google Forms - URLs de Respuesta)
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 3. FUNCIÓN PARA CARGAR DATOS ---
+# --- 3. CARGA DE DATOS ---
 @st.cache_data(ttl=5)
 def cargar_datos():
     try:
-        # Asegúrate de que las pestañas en tu Excel se llamen exactamente así
+        # Asegúrate de que las pestañas en el Excel se llamen exactamente así
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         return p, h
@@ -28,14 +28,14 @@ def cargar_datos():
 
 df_pacientes, df_historial = cargar_datos()
 
-# --- 4. INTERFAZ DE USUARIO ---
+# --- 4. INTERFAZ Y NAVEGACIÓN ---
 st.title("🩺 Sistema Tarjeta Vida")
 st.markdown("---")
 
 menu = ["Registrar Paciente", "Consulta e Historial", "Ver Base de Datos"]
 choice = st.sidebar.selectbox("Menú Principal", menu)
 
-# OPCIÓN 1: REGISTRAR NUEVO PACIENTE
+# --- SECCIÓN: REGISTRO DE PACIENTES ---
 if choice == "Registrar Paciente":
     st.subheader("📝 Nuevo Registro de Usuario")
     with st.form("form_paciente", clear_on_submit=True):
@@ -50,6 +50,7 @@ if choice == "Registrar Paciente":
         
         if st.form_submit_button("Guardar Registro Permanente"):
             if nombre and documento:
+                # Mapeo de IDs para el Formulario de Pacientes
                 payload = {
                     "entry.346175428": nombre,
                     "entry.1302424820": documento,
@@ -59,42 +60,43 @@ if choice == "Registrar Paciente":
                     "entry.1892763134": e_nombre,
                     "entry.2011749615": e_tel
                 }
-                if requests.post(URL_FORM_PACIENTES, data=payload).ok:
-                    st.success(f"✅ ¡{nombre} registrado con éxito!")
-                    st.cache_data.clear()
-                else:
-                    st.error("Error al guardar en la nube.")
+                try:
+                    r = requests.post(URL_FORM_PACIENTES, data=payload)
+                    if r.ok:
+                        st.success(f"✅ ¡{nombre} registrado con éxito!")
+                        st.cache_data.clear()
+                    else:
+                        st.error(f"Error de Google: {r.status_code}. Revisa que el formulario sea PÚBLICO.")
+                except:
+                    st.error("Error de conexión al servidor.")
             else:
-                st.warning("⚠️ El Nombre y el Documento son obligatorios.")
+                st.warning("⚠️ Nombre y Documento son obligatorios.")
 
-# OPCIÓN 2: CONSULTA DE HISTORIAL Y NUEVA EVOLUCIÓN
+# --- SECCIÓN: HISTORIAL Y CONSULTA ---
 elif choice == "Consulta e Historial":
-    st.subheader("🔍 Gestión de Evolución Médica")
-    id_buscar = st.text_input("Ingrese Cédula del paciente")
+    st.subheader("🔍 Evolución Médica")
+    id_buscar = st.text_input("Ingrese Cédula para buscar")
     
     if id_buscar and df_pacientes is not None:
-        pac_info = df_pacientes[df_pacientes["Documento"].astype(str) == str(id_buscar)]
+        pac_filtro = df_pacientes[df_pacientes["Documento"].astype(str) == str(id_buscar)]
         
-        if not pac_info.empty:
-            p = pac_info.iloc[0]
+        if not pac_filtro.empty:
+            p = pac_filtro.iloc[0]
             st.info(f"**Paciente:** {p['Nombre']} | **RH:** {p['RH']} | **Emergencia:** {p['Telefono Emergencia']}")
             
-            # Ver Historial Previo
-            with st.expander("📅 Ver Evoluciones Anteriores"):
+            # Ver registros previos
+            with st.expander("📅 Ver Historial Anterior"):
                 if df_historial is not None:
                     h_pac = df_historial[df_historial["Documento"].astype(str) == str(id_buscar)]
-                    if not h_pac.empty:
-                        st.dataframe(h_pac, use_container_width=True)
-                    else:
-                        st.write("No hay registros previos para este paciente.")
+                    st.dataframe(h_pac, use_container_width=True) if not h_pac.empty else st.write("Sin registros.")
             
-            # Formulario para Nueva Evolución
+            # Formulario Nueva Consulta
             st.write("---")
-            st.write("📝 **Registrar Nueva Consulta**")
+            st.write("📝 **Nueva Entrada de Evolución**")
             with st.form("form_historial", clear_on_submit=True):
                 tratamiento = st.text_input("Tratamiento")
-                medicamentos = st.text_area("Observaciones / Medicamentos")
-                procedimiento = st.text_area("Procedimientos Realizados")
+                medicamentos = st.text_area("Medicamentos / Observaciones")
+                procedimiento = st.text_area("Procedimiento Realizado")
                 
                 if st.form_submit_button("Guardar Evolución"):
                     # Mapeo de IDs para el Formulario de Historial
@@ -104,19 +106,23 @@ elif choice == "Consulta e Historial":
                         "entry.2016051626": medicamentos,
                         "entry.1088523869": procedimiento
                     }
-                    if requests.post(URL_FORM_HISTORIAL, data=payload_h).ok:
-                        st.success("✅ Evolución guardada correctamente.")
-                        st.cache_data.clear()
-                    else:
-                        st.error("Error al guardar la evolución.")
+                    try:
+                        r_h = requests.post(URL_FORM_HISTORIAL, data=payload_h)
+                        if r_h.ok:
+                            st.success("✅ Evolución guardada correctamente.")
+                            st.cache_data.clear()
+                        else:
+                            st.error(f"Error {r_h.status_code}. Revisa la privacidad del formulario.")
+                    except:
+                        st.error("Error de conexión.")
         else:
-            st.error("Paciente no encontrado en la base de datos.")
+            st.error("Paciente no encontrado.")
 
-# OPCIÓN 3: VISUALIZACIÓN DE BASE DE DATOS
+# --- SECCIÓN: BASE DE DATOS ---
 elif choice == "Ver Base de Datos":
-    st.subheader("📊 Registros Globales")
+    st.subheader("📊 Resumen de Registros")
     tab1, tab2 = st.tabs(["Pacientes", "Historial Completo"])
     with tab1:
-        st.dataframe(df_pacientes, use_container_width=True) if df_pacientes is not None else st.write("Error de conexión.")
+        st.dataframe(df_pacientes, use_container_width=True) if df_pacientes is not None else st.write("No hay datos.")
     with tab2:
-        st.dataframe(df_historial, use_container_width=True) if df_historial is not None else st.write("Error de conexión.")
+        st.dataframe(df_historial, use_container_width=True) if df_historial is not None else st.write("No hay datos.")
