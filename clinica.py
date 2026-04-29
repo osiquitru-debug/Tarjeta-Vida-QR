@@ -25,7 +25,7 @@ except:
     st.error("Error de conexión. Verifica los permisos de Google Sheets.")
     st.stop()
 
-st.title("🩺 Gestión Médica Integral")
+st.title("🩺 Tarjeta Vida QR")
 menu = ["Registrar Paciente", "Nueva Consulta", "Ver Base de Datos"]
 choice = st.sidebar.selectbox("Menú", menu)
 
