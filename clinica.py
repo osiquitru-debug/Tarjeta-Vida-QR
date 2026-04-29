@@ -44,18 +44,28 @@ if choice == "Registrar Paciente":
         if st.form_submit_button("Guardar en la Nube"):
             if nombre and documento:
                 nuevo_p = pd.DataFrame([{
-                    "Nombre": nombre, "Documento": documento, "Edad": edad,
-                    "RH": rh, "Celular": celular, "Contacto Emergencia": e_nombre,
+                    "Nombre": nombre, 
+                    "Documento": documento, 
+                    "Edad": edad,
+                    "RH": rh, 
+                    "Celular": celular, 
+                    "Contacto Emergencia": e_nombre,
                     "Telefono Emergencia": e_tel
                 }])
-                # INTENTO DE GUARDADO REAL
+                
                 try:
+                    # Usamos la conexión oficial para actualizar
+                    # Importante: No uses la url_publica aquí, usa el objeto conn directamente
                     df_actualizado = pd.concat([df_pacientes, nuevo_p], ignore_index=True)
-                    conn.update(spreadsheet=url_publica, worksheet="Pacientes", data=df_actualizado)
-                    st.success(f"✅ ¡{nombre} guardado exitosamente en Google Sheets!")
+                    conn.update(worksheet="Pacientes", data=df_actualizado)
+                    
+                    st.success(f"✅ ¡{nombre} guardado exitosamente!")
                     st.balloons()
+                    # Limpiamos el cache para que el nuevo paciente aparezca de inmediato
+                    st.cache_data.clear() 
                 except Exception as e:
-                    st.error("Error al guardar. Verifica que en Secrets esté el enlace de la hoja.")
+                    st.error("❌ Error técnico al escribir en Google Sheets.")
+                    st.info("Asegúrate de que en el botón COMPARTIR del Excel aparezcas como EDITOR.")
             else:
                 st.warning("Faltan datos obligatorios.")
 
