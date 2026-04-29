@@ -112,4 +112,19 @@ elif choice == "Nueva Consulta":
                     
                     try:
                         df_h_act = pd.concat([df_historial, nueva_fila], ignore_index=True)
-                        conn.update(worksheet="Historial", data=
+                        conn.update(worksheet="Historial", data=df_h_act)
+                        st.success("✅ Historial actualizado correctamente.")
+                        st.cache_data.clear()
+                    except Exception as e:
+                        st.error(f"Error al actualizar: {e}")
+        else:
+            st.error("Paciente no registrado en el sistema.")
+
+# --- OPCIÓN 3: VER BASE DE DATOS ---
+elif choice == "Ver Base de Datos":
+    st.subheader("📊 Registros de Tarjeta Vida")
+    t1, t2 = st.tabs(["Pacientes", "Historiales"])
+    with t1:
+        st.dataframe(df_pacientes, use_container_width=True)
+    with t2:
+        st.dataframe(df_historial, use_container_width=True)
