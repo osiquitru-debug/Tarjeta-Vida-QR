@@ -51,8 +51,8 @@ st.markdown("""
     
     .emergency-box {
         background-color: #fff5f5;
-        padding: 10px;
-        border-radius: 8px;
+        padding: 12px;
+        border-radius: 10px;
         border: 1px dashed #feb2b2;
         margin-top: 10px;
     }
@@ -70,11 +70,12 @@ URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMj
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
 # --- 4. CARGA DE DATOS ---
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=1)
 def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
+        # Normalizamos: Quitamos espacios al inicio/final y pasamos a MAYÚSCULAS
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
         return p, h
@@ -129,7 +130,7 @@ if choice == "Registrar Paciente":
                 st.cache_data.clear()
             else: st.error("⚠️ Datos obligatorios faltantes.")
 
-# --- SECCIÓN: CONSULTA E HISTORIAL (CORREGIDA) ---
+# --- SECCIÓN: CONSULTA E HISTORIAL (AJUSTE DE EMERGENCIA) ---
 elif choice == "Consulta e Historial":
     st.subheader("🔍 Evolución y Antecedentes")
     id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
@@ -141,17 +142,21 @@ elif choice == "Consulta e Historial":
         if not p_data.empty:
             p = p_data.iloc[0]
             
-            # Obtener datos de emergencia con nombres exactos de columnas
-            emergencia_nombre = p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'No registrado')
-            emergencia_tel = p.get('TELEFONO DE CONTACTO DE EMERGENCIA', 'No registrado')
+            # --- LÓGICA DE BÚSQUEDA DE COLUMNAS DE EMERGENCIA ---
+            # Buscamos nombres que contengan "EMERGENCIA" para evitar errores de tildes
+            col_nom_em = [c for c in p.index if "NOMBRE" in c and "EMERGENCIA" in c]
+            col_tel_em = [c for c in p.index if "TEL" in c and "EMERGENCIA" in c]
+            
+            e_nombre = p[col_nom_em[0]] if col_nom_em else "No registrado"
+            e_tel = p[col_tel_em[0]] if col_tel_em else "No registrado"
 
             st.markdown(f"""
             <div class="medical-card">
                 <h3 style='margin:0; color:#2d3748;'>👤 {p.get('NOMBRE', 'N/A')}</h3>
                 <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>EPS:</b> {p.get('EPS', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <div class="emergency-box">
-                    <p style='margin:0; color:#c53030;'><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style='margin:0; color:#2d3748;'>{emergencia_nombre} — <b>Tel:</b> {emergencia_tel}</p>
+                    <p style='margin:0; color:#c53030; font-size: 0.9em;'><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
+                    <p style='margin:0; color:#2d3748; font-size: 1.1em;'>{e_nombre} — <b>Tel:</b> {e_tel}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -161,7 +166,6 @@ elif choice == "Consulta e Historial":
                 df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
                 h_previo = df_historial[df_historial["DOCUMENTO"] == id_buscar]
                 if not h_previo.empty:
-                    # Mostrar Tratamiento, Medicamentos y Procedimientos
                     cols = [c for c in ["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_previo.columns]
                     st.dataframe(h_previo[cols].iloc[::-1], use_container_width=True, hide_index=True)
                 else: st.info("Sin registros previos.")
@@ -175,10 +179,10 @@ elif choice == "Consulta e Historial":
                 if st.form_submit_button("GUARDAR EVOLUCIÓN"):
                     payload_h = {
                         "entry.2019369477": id_buscar, "entry.611862537": t, 
-                        "entry.2016051626": m, "entry.ID_PROC": pr # RECUERDA ACTUALIZAR ID_PROC
+                        "entry.2016051626": m, "entry.ID_PROC": pr # Asegúrate de cambiar ID_PROC
                     }
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                    st.success("✅ Guardado.")
+                    st.success("✅ Evolución guardada.")
                     st.cache_data.clear()
                     st.rerun()
         else: st.error("Paciente no encontrado.")
