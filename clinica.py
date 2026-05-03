@@ -11,35 +11,62 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO EN TONOS PASTEL ---
+# --- 2. DISEÑO EN TONOS PASTEL E INTERFAZ MEJORADA ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
+    /* Input y formularios */
     input, textarea, [data-baseweb="select"] {
         color: #000000 !important;
         background-color: #ffffff !important;
         border: 1.5px solid #a2d2ff !important;
     }
 
+    /* Títulos y etiquetas */
     label, p, h1, h2, h3, .stSubheader {
         color: #2d3748 !important; 
         font-weight: bold !important;
     }
 
+    /* Sidebar Lavanda */
     [data-testid="stSidebar"] {
         background-color: #f3e8ff !important;
         border-right: 2px solid #e9d5ff;
     }
 
-    div.stButton > button {
+    /* ESTILO DE BOTONES DE NAVEGACIÓN LATERAL */
+    .stSidebar [data-testid="stVerticalBlock"] > div:has(button) {
+        margin-bottom: -10px;
+    }
+    
+    .stSidebar button {
+        width: 100%;
+        border-radius: 10px !important;
+        border: 1px solid #d8b4fe !important;
+        text-align: left !important;
+        padding: 10px !important;
+        background-color: #ffffff !important;
+        color: #581c87 !important;
+        transition: all 0.3s ease;
+    }
+
+    .stSidebar button:hover {
+        background-color: #e9d5ff !important;
+        border-color: #a855f7 !important;
+    }
+
+    /* Botones principales de acción */
+    div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #99f6e4 !important;
         color: #134e4a !important;
         border-radius: 12px;
         font-weight: bold !important;
         border: 1px solid #5eead4;
+        width: 100%;
     }
 
+    /* Tarjetas de Información */
     .medical-card {
         background-color: #ffffff;
         padding: 22px;
@@ -75,7 +102,6 @@ def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
-        # Normalizamos: Quitamos espacios al inicio/final y pasamos a MAYÚSCULAS
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
         return p, h
@@ -83,7 +109,23 @@ def cargar_datos():
 
 df_pacientes, df_historial = cargar_datos()
 
-# --- 5. CABECERA ---
+# --- 5. LÓGICA DE NAVEGACIÓN POR BOTONES ---
+if 'menu_option' not in st.session_state:
+    st.session_state.menu_option = "Registrar Paciente"
+
+def set_menu(option):
+    st.session_state.menu_option = option
+
+# --- 6. SIDEBAR (BOTONES LATERALES) ---
+with st.sidebar:
+    st.markdown("### 🏥 **MENÚ PRINCIPAL**")
+    st.button("📝 Registrar Paciente", on_click=set_menu, args=("Registrar Paciente",))
+    st.button("🔍 Consulta e Historial", on_click=set_menu, args=("Consulta e Historial",))
+    st.button("📊 Base de Datos", on_click=set_menu, args=("Base de Datos",))
+    st.markdown("---")
+    st.write(f"Seleccionado: **{st.session_state.menu_option}**")
+
+# --- 7. CABECERA ---
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
     try:
@@ -95,11 +137,8 @@ with col2:
 st.markdown("<h1 style='text-align: center;'>Gestión Médica Integral</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- 6. NAVEGACIÓN ---
-choice = st.sidebar.selectbox("MENÚ PRINCIPAL", ["Registrar Paciente", "Consulta e Historial", "Base de Datos"])
-
 # --- SECCIÓN: REGISTRO ---
-if choice == "Registrar Paciente":
+if st.session_state.menu_option == "Registrar Paciente":
     st.subheader("📝 Nuevo Registro")
     with st.form("f_reg", clear_on_submit=True):
         st.markdown("### 👤 Datos del Paciente")
@@ -130,8 +169,8 @@ if choice == "Registrar Paciente":
                 st.cache_data.clear()
             else: st.error("⚠️ Datos obligatorios faltantes.")
 
-# --- SECCIÓN: CONSULTA E HISTORIAL (AJUSTE DE EMERGENCIA) ---
-elif choice == "Consulta e Historial":
+# --- SECCIÓN: CONSULTA E HISTORIAL ---
+elif st.session_state.menu_option == "Consulta e Historial":
     st.subheader("🔍 Evolución y Antecedentes")
     id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
     
@@ -142,8 +181,7 @@ elif choice == "Consulta e Historial":
         if not p_data.empty:
             p = p_data.iloc[0]
             
-            # --- LÓGICA DE BÚSQUEDA DE COLUMNAS DE EMERGENCIA ---
-            # Buscamos nombres que contengan "EMERGENCIA" para evitar errores de tildes
+            # Lógica inteligente de columnas para emergencia
             col_nom_em = [c for c in p.index if "NOMBRE" in c and "EMERGENCIA" in c]
             col_tel_em = [c for c in p.index if "TEL" in c and "EMERGENCIA" in c]
             
@@ -179,7 +217,7 @@ elif choice == "Consulta e Historial":
                 if st.form_submit_button("GUARDAR EVOLUCIÓN"):
                     payload_h = {
                         "entry.2019369477": id_buscar, "entry.611862537": t, 
-                        "entry.2016051626": m, "entry.ID_PROC": pr # Asegúrate de cambiar ID_PROC
+                        "entry.2016051626": m, "entry.ID_PROC": pr 
                     }
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
                     st.success("✅ Evolución guardada.")
@@ -187,6 +225,7 @@ elif choice == "Consulta e Historial":
                     st.rerun()
         else: st.error("Paciente no encontrado.")
 
+# --- SECCIÓN: BASE DE DATOS ---
 else:
     st.subheader("📊 Bases de Datos")
     t1, t2 = st.tabs(["Pacientes", "Historial"])
