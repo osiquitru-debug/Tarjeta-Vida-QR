@@ -37,9 +37,13 @@ st.markdown("""
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
 
-    /* Tarjeta de Evolución (Historial) */
+    /* Tarjeta de Evolución Mejorada */
     .evolution-card {
-        background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #a2d2ff; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        background-color: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 8px solid #63b3ed; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .evo-header {
+        display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; margin-bottom: 10px; padding-bottom: 5px;
     }
     
     .emergency-box {
@@ -48,7 +52,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. URL DEL LOGO (GOOGLE DRIVE DIRECTO) ---
+# --- 3. URL DEL LOGO ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 
@@ -114,70 +118,67 @@ if st.session_state.menu == "Registrar":
                     "entry.162368130": rh, "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente registrado con éxito.")
+                st.success("✅ Registro exitoso.")
                 st.cache_data.clear()
-            else: st.error("⚠️ Nombre y Documento son obligatorios.")
+            else: st.error("⚠️ Datos obligatorios faltantes.")
 
 elif st.session_state.menu == "Consulta":
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2: st.image(URL_LOGO, width=150)
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
 
-    id_bus = st.text_input("Ingrese Documento del paciente").strip()
+    id_bus = st.text_input("Ingrese Documento").strip()
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         if not paciente.empty:
             p = paciente.iloc[0]
-            e_n = p.get('NOMBRE DEL CONTACTO DE EMERGENCIA') or p.get('NOMBRE CONTACTO EMERGENCIA') or "No registrado"
-            e_t = p.get('TELEFONO DE CONTACTO DE EMERGENCIA') or p.get('TELEFONO CONTACTO EMERGENCIA') or "N/A"
-            
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style="color: black !important; margin-bottom:5px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p style="margin:2px;"><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
-                <p style="margin:2px;"><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
+                <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
+                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <div class="emergency-box">
-                    <p style="color: #c53030 !important; margin:0; font-size: 1.1em;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0; color: black !important;"><b>Nombre:</b> {e_n} | <b>Tel:</b> {e_t}</p>
+                    <p style="color: red !important; margin:0;"><b>🚨 EMERGENCIA:</b> {p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'N/A')}</p>
+                    <p style="margin:0; color: black !important;"><b>Tel:</b> {p.get('TELEFONO DE CONTACTO DE EMERGENCIA', 'N/A')}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # --- SECCIÓN DE HISTORIAL EN TARJETAS ---
-            st.markdown("### 📅 Evoluciones Médicas")
+            st.markdown("### 📅 Historial de Evoluciones")
             if df_h is not None:
-                h_p = df_h[df_h["DOCUMENTO"] == id_bus].iloc[::-1] # Invertir para ver lo más reciente
+                h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
+                total_evos = len(h_p)
                 
-                if h_p.empty:
-                    st.info("Este paciente aún no tiene evoluciones registradas.")
+                if total_evos == 0:
+                    st.info("Sin registros.")
                 else:
-                    for _, fila in h_p.iterrows():
-                        fecha = fila.get("MARCA DE TIEMPO", "Sin fecha")
-                        tratamiento = fila.get("TRATAMIENTO", "N/A")
-                        medicamentos = fila.get("MEDICAMENTOS", "N/A")
-                        procedimientos = fila.get("PROCEDIMIENTOS", "N/A")
-                        
+                    # Mostramos las tarjetas de la más nueva a la más antigua
+                    for i in range(total_evos - 1, -1, -1):
+                        fila = h_p.iloc[i]
+                        n_evo = i + 1
                         st.markdown(f"""
                         <div class="evolution-card">
-                            <small style="color: #718096;">🕒 {fecha}</small>
-                            <p style="margin-top: 10px; margin-bottom: 5px;"><b>🩺 Tratamiento:</b><br>{tratamiento}</p>
-                            <p style="margin-bottom: 5px;"><b>💊 Medicamentos:</b><br>{medicamentos}</p>
-                            <p style="margin-bottom: 0px;"><b>📋 Procedimientos:</b><br>{procedimientos}</p>
+                            <div class="evo-header">
+                                <span style="color: #2b6cb0; font-size: 1.2em;"><b>Evolución #{n_evo}</b></span>
+                                <span style="color: #718096; font-size: 0.85em;">🕒 {fila.get('MARCA DE TIEMPO', '')}</span>
+                            </div>
+                            <p style="margin: 5px 0;"><b>🩺 Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><b>💊 Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><b>📋 Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                         </div>
                         """, unsafe_allow_html=True)
 
             with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Nueva Evolución")
+                st.write("### ✍️ Nueva Entrada")
                 t, m, pr = st.text_input("Tratamiento"), st.text_area("Medicamentos"), st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR EN HISTORIAL"):
+                if st.form_submit_button("GUARDAR"):
                     requests.post(URL_FORM_HISTORIAL, data={"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr})
                     st.success("✅ Guardado.")
                     st.cache_data.clear()
                     st.rerun()
-        else: st.error("❌ Paciente no encontrado.")
+        else: st.error("❌ No encontrado.")
 
 else:
-    st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["📋 Pacientes", "📔 Historial"])
-    if df_p is not None: t1.dataframe(df_p, use_container_width=True)
-    if df_h is not None: t2.dataframe(df_h, use_container_width=True)
+    st.subheader("📊 Base de Datos")
+    t1, t2 = st.tabs(["Pacientes", "Historial"])
+    if df_p is not None: t1.dataframe(df_p)
+    if df_h is not None: t2.dataframe(df_h)
