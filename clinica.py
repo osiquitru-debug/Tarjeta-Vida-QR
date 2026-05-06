@@ -2,206 +2,94 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# --- 1. CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(
-    page_title="Tarjeta Vida | Gestión Médica QR", 
-    layout="centered", 
-    page_icon="🩺"
-)
+# --- 1. CONFIGURACIÓN ---
+st.set_page_config(page_title="Tarjeta Vida", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS PASTEL ACTUALIZADO ---
+# --- 2. CSS OPTIMIZADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
-    label, p, h1, h2, h3, span { color: #000000 !important; font-weight: 600 !important; }
-    
-    /* Inputs y áreas de texto */
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
-    input, textarea { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
-    .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
-
-    /* Botones principales */
-    div.stButton > button:first-child:not(.stSidebar button) {
-        background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
-    }
-
-    /* Tarjetas */
     .medical-card {
-        background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+        background-color: #ffffff; padding: 20px; border-radius: 15px; 
+        border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+        color: #000000 !important;
     }
     .condition-box {
-        background-color: #fff9db; padding: 12px; border-radius: 10px; border: 1px solid #fab005; margin: 10px 0;
+        background-color: #fffaf0; padding: 10px; border-radius: 8px;
+        border: 1px solid #feebc8; margin: 10px 0;
     }
-    .evolution-card {
-        background-color: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 8px solid #63b3ed; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    .emergency-box {
+        background-color: #fff5f5; padding: 12px; border-radius: 10px;
+        border: 2px dashed #f56565; margin-top: 15px;
     }
-    .evo-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; margin-bottom: 10px; padding-bottom: 5px; }
-    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
+    label, p, h2, b { color: #000000 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. URLs Y RECURSOS ---
-ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
-URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
-
+# --- 3. CARGA DE DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
-URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
-URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. CARGA DE DATOS ---
 @st.cache_data(ttl=1)
 def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
-        h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         p.columns = p.columns.str.strip().str.upper()
-        h.columns = h.columns.str.strip().str.upper()
-        for df in [p, h]:
-            if 'DOCUMENTO' in df.columns:
-                df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-        return p, h
-    except: return None, None
+        if 'DOCUMENTO' in p.columns:
+            p['DOCUMENTO'] = p['DOCUMENTO'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+        return p
+    except: return None
 
-df_p, df_h = cargar_datos()
+def limpiar_texto(valor):
+    if pd.isna(valor) or str(valor).lower() == 'nan':
+        return "Ninguna"
+    return str(valor)
 
-def obtener_valor(df_row, keywords):
-    for col in df_row.index:
-        if all(word in col for word in keywords):
-            return df_row[col]
-    return "No registrado"
+df_p = cargar_datos()
 
-# --- 5. NAVEGACIÓN ---
-if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
-with st.sidebar:
-    st.image(URL_LOGO, use_container_width=True)
-    st.markdown("---")
-    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
-    if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
-    if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
+# --- 4. SECCIÓN DE CONSULTA ---
+st.markdown("<h1 style='text-align: center;'>🩺 Consulta de Paciente</h1>", unsafe_allow_html=True)
+id_bus = st.text_input("Ingrese Documento").strip()
 
-# --- 6. SECCIONES ---
-
-if st.session_state.menu == "Registrar":
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2: st.image(URL_LOGO, use_container_width=True)
-    st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
+if id_bus and df_p is not None:
+    paciente = df_p[df_p["DOCUMENTO"] == id_bus]
     
-    st.subheader("📝 Registro de Nuevo Paciente")
-    with st.form("reg_form", clear_on_submit=True):
-        nombre = st.text_input("Nombre Completo")
-        c1, c2 = st.columns(2)
-        tipo_doc = c1.selectbox("Tipo de Documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Registro Civil", "Cédula de Extranjería"])
-        cedula = c2.text_input("Número de Documento")
+    if not paciente.empty:
+        p = paciente.iloc[0]
         
-        # Campo de Condiciones Especiales
-        condiciones = st.text_area("Condiciones Especiales (Alergias, Enfermedades de base)", placeholder="Ej: Alérgico a penicilina, Diabetes tipo 2...")
+        # Extracción manual y limpia de campos
+        nombre_paciente = p.get('NOMBRE', 'No registrado')
+        rh = p.get('RH', 'N/A')
+        eps = p.get('EPS', 'Emcosalud')
+        celular = p.get('CELULAR', 'N/A')
         
-        c3, c4 = st.columns(2)
-        edad = c3.text_input("Edad")
-        rh = c4.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        c5, c6 = st.columns(2)
-        eps = c5.text_input("EPS")
-        cel = c6.text_input("Celular")
-        
-        st.markdown("### 🚨 Contacto de Emergencia")
-        e_nom = st.text_input("Nombre contacto emergencia")
-        e_tel = st.text_input("Teléfono contacto emergencia")
-        
-        if st.form_submit_button("GUARDAR PACIENTE"):
-            if nombre and cedula:
-                payload = {
-                    "entry.346175428": nombre, 
-                    "entry.1650757004": tipo_doc,
-                    "entry.1302424820": cedula.strip(), 
-                    "entry.1801154005": edad,
-                    "entry.1043165037": cel, 
-                    "entry.1172011247": eps,
-                    "entry.162368130": rh, 
-                    "entry.1892763134": e_nom, 
-                    "entry.2011749615": e_tel,
-                    "entry.NUEVO_ID_AQUÍ": condiciones # REEMPLAZAR CON ID REAL
-                }
-                requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente registrado con éxito.")
-                st.cache_data.clear()
-            else: st.error("⚠️ Nombre y Documento son obligatorios.")
+        # Manejo de Alergias y Emergencias
+        alergias = limpiar_texto(p.get('ALERGIAS') or p.get('ALERGIA') or p.get('CONDICIONES'))
+        e_nombre = limpiar_texto(p.get('NOMBRE CONTACTO EMERGENCIA') or p.get('NOMBRE DEL CONTACTO DE EMERGENCIA'))
+        e_tel = limpiar_texto(p.get('TELÉFONO CONTACTO DE EMERGENCIA') or p.get('TELÉFONO CONTACTO'))
 
-elif st.session_state.menu == "Consulta":
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2: st.image(URL_LOGO, width=150)
-    st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
-
-    id_bus = st.text_input("Ingrese Documento del paciente").strip()
-    if id_bus and df_p is not None:
-        paciente = df_p[df_p["DOCUMENTO"] == id_bus]
-        if not paciente.empty:
-            p = paciente.iloc[0]
+        # TARJETA VISUAL
+        st.markdown(f"""
+        <div class="medical-card">
+            <h2 style="margin:0;">👤 {nombre_paciente}</h2>
+            <p style="margin:5px 0;"><b>ID:</b> {id_bus} | <b>RH:</b> {rh}</p>
             
-            # Obtención de valores dinámicos
-            emer_nom = obtener_valor(p, ["NOMBRE", "EMERGENCIA"])
-            emer_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"]) or obtener_valor(p, ["TEL", "EMERGENCIA"])
-            cond_val = obtener_valor(p, ["CONDICIONES", "ESPECIALES"]) or "Ninguna registrada"
-            
-            # Tarjeta Principal del Paciente
-            st.markdown(f"""
-            <div class="medical-card">
-                <h2 style="color: black !important; margin-bottom:5px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p style="margin:0;"><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
-                
-                <div class="condition-box">
-                    <p style="color: #856404 !important; margin: 0; font-size: 0.9em;"><b>⚠️ CONDICIONES Y ALERGIAS:</b></p>
-                    <p style="color: #000000 !important; margin: 0;">{cond_val}</p>
-                </div>
-
-                <p style="margin:5px 0;"><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
-                
-                <div class="emergency-box">
-                    <p style="color: red !important; margin:0;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0; color: black !important;"><b>Nombre:</b> {emer_nom}</p>
-                    <p style="margin:0; color: black !important;"><b>Tel:</b> {emer_tel}</p>
-                </div>
+            <div class="condition-box">
+                <p style="color: #856404 !important; margin: 0; font-size: 0.9em;"><b>⚠️ CONDICIONES Y ALERGIAS:</b></p>
+                <p style="margin: 0;">{alergias}</p>
             </div>
-            """, unsafe_allow_html=True)
             
-            st.markdown("### 📅 Historial de Evoluciones")
-            if df_h is not None:
-                h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
-                if h_p.empty: st.info("Sin registros previos.")
-                else:
-                    for i in range(len(h_p)-1, -1, -1):
-                        fila = h_p.iloc[i]
-                        st.markdown(f"""
-                        <div class="evolution-card">
-                            <div class="evo-header">
-                                <span style="color: #2b6cb0;"><b>Evolución #{i+1}</b></span>
-                                <span style="color: #718096; font-size: 0.85em;">🕒 {fila.get('MARCA DE TIEMPO', 'N/A')}</span>
-                            </div>
-                            <p style="margin: 5px 0;"><b>🩺 Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                            <p style="margin: 5px 0;"><b>💊 Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                            <p style="margin: 5px 0;"><b>📋 Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-            with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Nueva Evolución")
-                t, m, pr = st.text_input("Tratamiento"), st.text_area("Medicamentos"), st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR EN HISTORIAL"):
-                    requests.post(URL_FORM_HISTORIAL, data={
-                        "entry.2019369477": id_bus, 
-                        "entry.611862537": t, 
-                        "entry.2016051626": m, 
-                        "entry.1088523869": pr
-                    })
-                    st.success("✅ Evolución guardada.")
-                    st.cache_data.clear()
-                    st.rerun()
-        else: st.error("❌ Paciente no encontrado.")
-
-else:
-    st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["📋 Pacientes", "📔 Historial"])
-    if df_p is not None: t1.dataframe(df_p, use_container_width=True)
-    if df_h is not None: t2.dataframe(df_h, use_container_width=True)
+            <p style="margin:5px 0;"><b>EPS:</b> {eps} | <b>CEL:</b> {celular}</p>
+            
+            <div class="emergency-box">
+                <p style="color: red !important; margin:0; font-size: 0.9em;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
+                <p style="margin:0;"><b>Nombre:</b> {e_nombre}</p>
+                <p style="margin:0;"><b>Tel:</b> {e_tel}</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🖨️ Preparar para Impresión"):
+            st.info("Usa Ctrl+P para guardar como PDF")
+    else:
+        st.error("Paciente no encontrado.")
