@@ -2,54 +2,89 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
+# --- 1. CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(
+    page_title="Tarjeta Vida | Gestión Médica", 
+    layout="centered", 
+    page_icon="🩺"
+)
 
-# --- 2. CSS DE ALTO CONTRASTE ---
+# --- 2. DISEÑO CSS PASTEL Y ALTO CONTRASTE ---
 st.markdown("""
     <style>
+    /* Fondo General App - Verde Pastel Suave */
     .stApp { background-color: #f0fff4 !important; }
-    label, p, h1, h2, h3, span { color: #000000 !important; font-weight: 600 !important; }
     
-    /* Desplegables: Fondo Blanco, Texto Negro */
+    /* Forzar texto negro para etiquetas y párrafos */
+    label, p, h1, h2, h3, span, .stMarkdown {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+
+    /* --- DESPLEGABLES (SELECTBOX) --- */
     div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 2px solid #a2d2ff !important;
     }
     
-    /* Inputs y Áreas de texto */
+    /* Inputs y áreas de texto */
     input, textarea {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 2px solid #a2d2ff !important;
     }
 
-    /* Tablas: Texto Blanco para lectura en celdas oscuras */
+    /* --- TABLAS (BASE DE DATOS) --- */
     [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
         color: #ffffff !important;
     }
     
-    .stButton > button {
-        background-color: #4fd1c5 !important;
-        color: #000000 !important;
-        border: 2px solid #285e61;
-        font-weight: bold;
-        width: 100%;
+    /* Sidebar - Lila Pastel */
+    [data-testid="stSidebar"] {
+        background-color: #f3e8ff !important;
+        border-right: 2px solid #d8b4fe;
     }
     
+    .stSidebar button {
+        width: 100%;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 2px solid #d8b4fe !important;
+        font-weight: bold !important;
+        margin-bottom: 10px;
+    }
+
+    /* Botón de Guardar - Turquesa Pastel */
+    div.stButton > button:first-child:not(.stSidebar button) {
+        background-color: #4fd1c5 !important;
+        color: #000000 !important;
+        border-radius: 12px;
+        font-weight: 900 !important;
+        border: 2px solid #285e61;
+        height: 3.5em;
+    }
+
+    /* Tarjeta Médica */
     .medical-card {
         background-color: #ffffff;
         padding: 20px;
         border-radius: 15px;
+        border: 2px solid #b2f5ea;
         border-left: 15px solid #4fd1c5;
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. CONEXIÓN A DATOS ---
+# --- 3. LOGO DESDE GOOGLE DRIVE ---
+# Enlace convertido para visualización directa en Streamlit
+ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+URL_LOGO = f"https://drive.google.com/uc?export=view&id={ID_LOGO}"
+st.sidebar.image(URL_LOGO, width=200)
+
+# --- 4. CONEXIÓN A DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
@@ -69,16 +104,16 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-# --- 4. NAVEGACIÓN ---
+# --- 5. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 
 with st.sidebar:
-    st.markdown("### 🏥 **MENÚ PRINCIPAL**")
+    st.markdown("### 🏥 **TARJETA VIDA**")
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
     if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
-# --- 5. SECCIONES ---
+# --- 6. SECCIONES ---
 
 if st.session_state.menu == "Registrar":
     st.subheader("📝 Registro de Nuevo Paciente")
@@ -116,13 +151,13 @@ if st.session_state.menu == "Registrar":
                     "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success(f"✅ {nombre} enviado a la base de datos.")
+                st.success(f"✅ Registro de {nombre} enviado exitosamente.")
                 st.cache_data.clear()
-            else: st.error("⚠️ Nombre y Documento son obligatorios.")
+            else: st.error("⚠️ Nombre y Documento son campos obligatorios.")
 
 elif st.session_state.menu == "Consulta":
     st.subheader("🔍 Consulta e Historial")
-    id_bus = st.text_input("Ingrese Documento para buscar").strip()
+    id_bus = st.text_input("Ingrese Documento del paciente").strip()
     
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
@@ -131,7 +166,7 @@ elif st.session_state.menu == "Consulta":
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>{p.get('TIPO DE DOCUMENTO', 'ID')}:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div style="background-color: #fff5f5; padding: 10px; border-radius: 8px; border: 1px dashed red;">
                     <p style="color: red !important; margin:0;"><b>🚨 EMERGENCIA:</b> {p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'No registrado')}</p>
@@ -140,27 +175,27 @@ elif st.session_state.menu == "Consulta":
             </div>
             """, unsafe_allow_html=True)
             
-            st.write("### 📅 Evoluciones Registradas")
+            st.write("### 📅 Historial de Evoluciones")
             if df_h is not None:
                 h_p = df_h[df_h["DOCUMENTO"] == id_bus]
                 cols_hist = [c for c in ["MARCA DE TIEMPO", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_p.columns]
                 st.dataframe(h_p[cols_hist].iloc[::-1], use_container_width=True, hide_index=True)
 
             with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Nueva Evolución")
+                st.write("### ✍️ Registrar Evolución")
                 t = st.text_input("Tratamiento")
                 m = st.text_area("Medicamentos")
                 pr = st.text_area("Procedimientos")
-                if st.form_submit_button("REGISTRAR ATENCIÓN"):
+                if st.form_submit_button("GUARDAR EN HISTORIAL"):
                     payload_h = {"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr}
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                    st.success("✅ Guardado.")
+                    st.success("✅ Evolución guardada.")
                     st.cache_data.clear()
                     st.rerun()
-        else: st.error("❌ No encontrado.")
+        else: st.error("❌ No se encontró ningún paciente con ese documento.")
 
 else:
     st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["Pacientes", "Historial"])
+    t1, t2 = st.tabs(["📋 Pacientes", "📔 Historial"])
     if df_p is not None: t1.dataframe(df_p, use_container_width=True)
     if df_h is not None: t2.dataframe(df_h, use_container_width=True)
