@@ -23,9 +23,6 @@ st.markdown("""
     div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
     input, textarea { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
 
-    /* Tablas */
-    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { color: #ffffff !important; }
-    
     /* Sidebar Pastel */
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
@@ -35,17 +32,18 @@ st.markdown("""
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
 
-    /* Tarjetas */
+    /* Tarjeta de Datos Personales */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
-    .emergency-box {
-        background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px;
+
+    /* Tarjeta de Evolución (Historial) */
+    .evolution-card {
+        background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #a2d2ff; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    /* Centrado de imagen y texto */
-    .centered-content {
-        text-align: center;
+    .emergency-box {
+        background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -86,11 +84,8 @@ with st.sidebar:
 # --- 6. SECCIONES ---
 
 if st.session_state.menu == "Registrar":
-    # Logo centrado sobre el título
     col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(URL_LOGO, use_container_width=True)
-    
+    with col2: st.image(URL_LOGO, use_container_width=True)
     st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
     
     st.subheader("📝 Registro de Nuevo Paciente")
@@ -124,11 +119,8 @@ if st.session_state.menu == "Registrar":
             else: st.error("⚠️ Nombre y Documento son obligatorios.")
 
 elif st.session_state.menu == "Consulta":
-    # Logo centrado sobre el título
     col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.image(URL_LOGO, width=150)
-    
+    with col2: st.image(URL_LOGO, width=150)
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
 
     id_bus = st.text_input("Ingrese Documento del paciente").strip()
@@ -146,20 +138,36 @@ elif st.session_state.menu == "Consulta":
                 <p style="margin:2px;"><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div class="emergency-box">
                     <p style="color: #c53030 !important; margin:0; font-size: 1.1em;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0; color: black !important;"><b>Nombre:</b> {e_n}</p>
-                    <p style="margin:0; color: black !important;"><b>Teléfono:</b> {e_t}</p>
+                    <p style="margin:0; color: black !important;"><b>Nombre:</b> {e_n} | <b>Tel:</b> {e_t}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            st.write("### 📅 Evoluciones")
+            # --- SECCIÓN DE HISTORIAL EN TARJETAS ---
+            st.markdown("### 📅 Evoluciones Médicas")
             if df_h is not None:
-                h_p = df_h[df_h["DOCUMENTO"] == id_bus]
-                cols = [c for c in ["MARCA DE TIEMPO", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_p.columns]
-                st.dataframe(h_p[cols].iloc[::-1], use_container_width=True, hide_index=True)
+                h_p = df_h[df_h["DOCUMENTO"] == id_bus].iloc[::-1] # Invertir para ver lo más reciente
+                
+                if h_p.empty:
+                    st.info("Este paciente aún no tiene evoluciones registradas.")
+                else:
+                    for _, fila in h_p.iterrows():
+                        fecha = fila.get("MARCA DE TIEMPO", "Sin fecha")
+                        tratamiento = fila.get("TRATAMIENTO", "N/A")
+                        medicamentos = fila.get("MEDICAMENTOS", "N/A")
+                        procedimientos = fila.get("PROCEDIMIENTOS", "N/A")
+                        
+                        st.markdown(f"""
+                        <div class="evolution-card">
+                            <small style="color: #718096;">🕒 {fecha}</small>
+                            <p style="margin-top: 10px; margin-bottom: 5px;"><b>🩺 Tratamiento:</b><br>{tratamiento}</p>
+                            <p style="margin-bottom: 5px;"><b>💊 Medicamentos:</b><br>{medicamentos}</p>
+                            <p style="margin-bottom: 0px;"><b>📋 Procedimientos:</b><br>{procedimientos}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
             with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Evolución")
+                st.write("### ✍️ Registrar Nueva Evolución")
                 t, m, pr = st.text_input("Tratamiento"), st.text_area("Medicamentos"), st.text_area("Procedimientos")
                 if st.form_submit_button("GUARDAR EN HISTORIAL"):
                     requests.post(URL_FORM_HISTORIAL, data={"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr})
@@ -170,6 +178,6 @@ elif st.session_state.menu == "Consulta":
 
 else:
     st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["📋 Pacientes Registrados", "📔 Historial Médico"])
+    t1, t2 = st.tabs(["📋 Pacientes", "📔 Historial"])
     if df_p is not None: t1.dataframe(df_p, use_container_width=True)
     if df_h is not None: t2.dataframe(df_h, use_container_width=True)
