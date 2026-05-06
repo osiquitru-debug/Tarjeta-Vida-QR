@@ -42,6 +42,11 @@ st.markdown("""
     .emergency-box {
         background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px;
     }
+    
+    /* Centrado de imagen y texto */
+    .centered-content {
+        text-align: center;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -81,10 +86,12 @@ with st.sidebar:
 # --- 6. SECCIONES ---
 
 if st.session_state.menu == "Registrar":
-    # Logo también en el cuerpo de la página
-    c_logo, c_tit = st.columns([1, 4])
-    with c_logo: st.image(URL_LOGO, width=80)
-    with c_tit: st.title("Gestión Médica Tarjeta QR")
+    # Logo centrado sobre el título
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(URL_LOGO, use_container_width=True)
+    
+    st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
     
     st.subheader("📝 Registro de Nuevo Paciente")
     with st.form("reg_form", clear_on_submit=True):
@@ -117,16 +124,18 @@ if st.session_state.menu == "Registrar":
             else: st.error("⚠️ Nombre y Documento son obligatorios.")
 
 elif st.session_state.menu == "Consulta":
-    c_logo2, c_tit2 = st.columns([1, 4])
-    with c_logo2: st.image(URL_LOGO, width=80)
-    with c_tit2: st.title("Consulta e Historial")
+    # Logo centrado sobre el título
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.image(URL_LOGO, width=150)
+    
+    st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
 
     id_bus = st.text_input("Ingrese Documento del paciente").strip()
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # Recuperar datos de emergencia con nombres de columna flexibles
             e_n = p.get('NOMBRE DEL CONTACTO DE EMERGENCIA') or p.get('NOMBRE CONTACTO EMERGENCIA') or "No registrado"
             e_t = p.get('TELEFONO DE CONTACTO DE EMERGENCIA') or p.get('TELEFONO CONTACTO EMERGENCIA') or "N/A"
             
