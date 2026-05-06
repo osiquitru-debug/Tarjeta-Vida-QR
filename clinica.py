@@ -11,29 +11,28 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS DE ALTO CONTRASTE (CORREGIDO) ---
+# --- 2. DISEÑO CSS DE ALTO CONTRASTE ---
 st.markdown("""
     <style>
-    /* Fondo General App */
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Forzar texto negro en etiquetas y párrafos */
-    p, label, h1, h2, h3, span, .stMarkdown {
+    /* Etiquetas y textos generales en negro */
+    label, p, h1, h2, h3, span {
         color: #000000 !important;
         font-weight: 600 !important;
     }
 
-    /* --- CORRECCIÓN TOTAL DE DESPLEGABLES (SELECTBOX) --- */
-    /* Esto obliga a que el contenedor del select sea blanco con texto negro */
+    /* --- CORRECCIÓN DE DESPLEGABLES (SELECTBOX) --- */
     div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 2px solid #a2d2ff !important;
     }
     
-    /* Asegura que el texto seleccionado sea negro */
-    div[data-baseweb="select"] [aria-selected="true"] {
+    /* Texto de las opciones al abrir el desplegable */
+    div[role="listbox"] ul li {
         color: #000000 !important;
+        background-color: #ffffff !important;
     }
 
     /* Inputs de texto y áreas de texto */
@@ -43,8 +42,7 @@ st.markdown("""
         border: 2px solid #a2d2ff !important;
     }
 
-    /* --- CORRECCIÓN BASE DE DATOS --- */
-    /* Texto blanco para las celdas de la tabla para que sea legible */
+    /* --- TABLAS (BASE DE DATOS) --- */
     [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
         color: #ffffff !important;
     }
@@ -98,6 +96,11 @@ def cargar_datos():
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
+        # Limpieza de documentos para búsqueda exacta
+        if 'DOCUMENTO' in p.columns:
+            p['DOCUMENTO'] = p['DOCUMENTO'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+        if 'DOCUMENTO' in h.columns:
+            h['DOCUMENTO'] = h['DOCUMENTO'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
         return p, h
     except: return None, None
 
@@ -120,12 +123,9 @@ if st.session_state.menu == "Registrar":
         nombre = st.text_input("Nombre Completo")
         
         c1, c2 = st.columns(2)
-        # --- DESPLEGABLE TIPO DE DOCUMENTO (REINSTALADO) ---
         tipo_doc = c1.selectbox("Tipo de Documento", [
-            "Registro Civil", 
-            "Tarjeta de Identidad", 
-            "Cedula de Ciudadania", 
-            "Cedula de Extranjeria"
+            "Registro Civil", "Tarjeta de Identidad", 
+            "Cedula de Ciudadania", "Cedula de Extranjeria"
         ])
         cedula = c2.text_input("Número de Documento")
         
@@ -146,26 +146,28 @@ if st.session_state.menu == "Registrar":
             if nombre and cedula:
                 payload = {
                     "entry.346175428": nombre,
-                    "entry.1302424820": cedula,
+                    "entry.1650757004": tipo_doc,  # ID Verificado
+                    "entry.1302424820": cedula.strip(),
                     "entry.1801154005": edad,
-                    "entry.162368130": rh,
                     "entry.1043165037": cel,
                     "entry.1172011247": eps,
+                    "entry.162368130": rh,
                     "entry.1892763134": e_nom,
                     "entry.2011749615": e_tel
-                    # Nota: Para guardar 'tipo_doc', asegúrate de tener el entry.ID en tu form
                 }
-                requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success(f"✅ Paciente {nombre} registrado con éxito.")
-                st.cache_data.clear()
-            else: st.error("⚠️ El Nombre y el Documento son campos obligatorios.")
+                response = requests.post(URL_FORM_PACIENTES, data=payload)
+                if response.status_code == 200:
+                    st.success(f"✅ {nombre} registrado correctamente.")
+                    st.cache_data.clear()
+                else:
+                    st.error("❌ Error al guardar. Verifica la conexión.")
+            else: st.error("⚠️ Nombre y Documento son obligatorios.")
 
 elif st.session_state.menu == "Consulta":
     st.subheader("🔍 Consulta e Historial")
-    id_bus = st.text_input("Ingrese Documento para buscar")
+    id_bus = st.text_input("Ingrese Documento para buscar").strip()
     
     if id_bus and df_p is not None:
-        df_p["DOCUMENTO"] = df_p["DOCUMENTO"].astype(str).str.strip()
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         
         if not paciente.empty:
@@ -173,7 +175,7 @@ elif st.session_state.menu == "Consulta":
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <p><b>{p.get('TIPO DE DOCUMENTO', 'Documento')}:</b> {p.get('DOCUMENTO', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')}</p>
                 <div style="background-color: #fff5f5; padding: 10px; border-radius: 8px; border: 1px dashed red;">
                     <p style="color: red !important; margin:0;"><b>🚨 EMERGENCIA:</b> {p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'No registrado')}</p>
@@ -183,25 +185,25 @@ elif st.session_state.menu == "Consulta":
             """, unsafe_allow_html=True)
             
             if df_h is not None:
-                df_h["DOCUMENTO"] = df_h["DOCUMENTO"].astype(str).str.strip()
                 h_p = df_h[df_h["DOCUMENTO"] == id_bus]
                 st.write("### 📅 Evoluciones")
                 st.dataframe(h_p[["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"]].iloc[::-1], use_container_width=True, hide_index=True)
 
             with st.form("h_form", clear_on_submit=True):
+                st.write("### ✍️ Nueva Evolución")
                 t = st.text_input("Tratamiento")
                 m = st.text_area("Medicamentos")
                 pr = st.text_area("Procedimientos")
                 if st.form_submit_button("REGISTRAR ATENCIÓN"):
                     payload_h = {"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr}
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                    st.success("✅ Evolución guardada.")
+                    st.success("✅ Historial actualizado.")
                     st.cache_data.clear()
                     st.rerun()
-        else: st.error("Paciente no encontrado.")
+        else: st.error("❌ Paciente no encontrado. Verifica el número.")
 
 else:
     st.subheader("📊 Base de Datos")
-    t1, t2 = st.tabs(["Pacientes registrados", "Historiales"])
+    t1, t2 = st.tabs(["Pacientes", "Historial"])
     if df_p is not None: t1.dataframe(df_p, use_container_width=True)
     if df_h is not None: t2.dataframe(df_h, use_container_width=True)
