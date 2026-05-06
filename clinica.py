@@ -2,29 +2,26 @@ import streamlit as st
 import pandas as pd
 import requests
 from fpdf import FPDF
-from datetime import datetime
 import io
 
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS (LOGOTIPO CENTRADO Y TEXTO NEGRO) ---
+# --- 2. DISEÑO CSS (CENTRAR LOGO Y TEXTO NEGRO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Centrar Logo en la Sidebar */
-    [data-testid="stSidebarNav"] { padding-top: 20px; }
-    [data-testid="stSidebar"] [data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    /* Texto Negro en toda la aplicación */
+    /* Forzar texto negro en toda la aplicación */
     label, p, h1, h2, h3, span, div, li { color: #000000 !important; font-weight: 600 !important; }
     
+    /* Centrar Logo Principal */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: -10px;
+    }
+
     /* Casillas de entrada blancas con texto negro */
     input, textarea, [data-baseweb="select"] > div {
         background-color: #ffffff !important;
@@ -63,41 +60,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF ---
-def generar_pdf(paciente, historial):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
-    pdf.ln(5)
-    
-    pdf.set_fill_color(240, 255, 244)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
-    pdf.set_font("Arial", '', 11)
-    pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/R')} ({paciente.get('TIPO DE DOCUMENTO', 'N/R')})", ln=True)
-    pdf.cell(0, 8, txt=f"Edad: {paciente.get('EDAD', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | RH: {paciente.get('RH', 'N/R')}", ln=True)
-    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
-    
-    pdf.ln(5)
-    pdf.set_fill_color(243, 232, 255)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
-    
-    if not historial.empty:
-        for i, fila in historial.iterrows():
-            pdf.set_font("Arial", 'B', 10)
-            fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
-            pdf.cell(0, 8, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
-            pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
-            pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
-            pdf.ln(2)
-    return pdf.output(dest='S').encode('latin-1', 'replace')
-
-# --- 5. CARGA DE DATOS ---
+# --- 4. CARGA DE DATOS ---
 @st.cache_data(ttl=1)
 def cargar_datos():
     try:
@@ -113,17 +76,50 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
+# --- 5. FUNCIÓN PDF ---
+def generar_pdf(paciente, historial):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
+    pdf.ln(5)
+    pdf.set_fill_color(240, 255, 244)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/R')}", ln=True)
+    pdf.cell(0, 8, txt=f"Doc: {paciente.get('DOCUMENTO', 'N/R')} ({paciente.get('TIPO DE DOCUMENTO', 'N/R')})", ln=True)
+    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | Cel: {paciente.get('CELULAR', 'N/R')}", ln=True)
+    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
+    pdf.ln(5)
+    pdf.set_fill_color(243, 232, 255)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
+    if not historial.empty:
+        for i, fila in historial.iterrows():
+            pdf.set_font("Arial", 'B', 10)
+            fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
+            pdf.cell(0, 8, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
+            pdf.set_font("Arial", '', 10)
+            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
+            pdf.line(10, pdf.get_y()+1, 200, pdf.get_y()+1)
+            pdf.ln(2)
+    return pdf.output(dest='S').encode('latin-1', 'replace')
+
 # --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
+
 with st.sidebar:
-    # Logo centrado mediante el CSS definido arriba
-    st.image(URL_LOGO, width=150) 
+    st.markdown(f'<div class="logo-container"><img src="{URL_LOGO}" width="150"></div>', unsafe_allow_html=True)
     st.markdown("---")
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
     if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
 # --- 7. SECCIONES ---
+# Logo Centrado sobre el título
+st.markdown(f'<div class="logo-container"><img src="{URL_LOGO}" width="180"></div>', unsafe_allow_html=True)
+
 if st.session_state.menu == "Registrar":
     st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
     with st.form("reg_form", clear_on_submit=True):
@@ -150,25 +146,24 @@ if st.session_state.menu == "Registrar":
                     "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente registrado con éxito.")
+                st.success("✅ Paciente registrado.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
-    st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
-    id_bus = st.text_input("Ingrese Documento del Paciente").strip()
+    st.markdown("<h1 style='text-align: center;'>Consulta de Historial</h1>", unsafe_allow_html=True)
+    id_bus = st.text_input("Ingrese Documento").strip()
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         if not paciente.empty:
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
-            
-            st.download_button("🖨️ Descargar Reporte PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
+            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
             
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="margin:0;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>Doc:</b> {id_bus} ({p.get('TIPO DE DOCUMENTO', 'N/A')}) | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
-                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>Celular:</b> {p.get('CELULAR', 'N/A')}</p>
+                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>Cel:</b> {p.get('CELULAR', 'N/A')}</p>
                 <p><b>Condiciones:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}</p>
                 <div class="emergency-box">
                     <b>🚨 EMERGENCIA:</b> {p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}
@@ -187,11 +182,11 @@ elif st.session_state.menu == "Consulta":
                 """, unsafe_allow_html=True)
 
             with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Nueva Evolución")
-                t = st.text_input("Tratamiento / Observaciones")
+                st.write("### ✍️ Registrar Evolución")
+                t = st.text_input("Tratamiento")
                 m = st.text_area("Medicamentos")
                 pr = st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR REGISTRO"):
+                if st.form_submit_button("GUARDAR"):
                     requests.post(URL_FORM_HISTORIAL, data={
                         "entry.2019369477": id_bus, "entry.611862537": t, 
                         "entry.2016051626": m, "entry.1088523869": pr
@@ -200,5 +195,5 @@ elif st.session_state.menu == "Consulta":
                     st.rerun()
 
 elif st.session_state.menu == "Base":
-    st.markdown("### 📊 Base de Datos General")
+    st.markdown("<h1 style='text-align: center;'>Base de Datos</h1>", unsafe_allow_html=True)
     if df_p is not None: st.dataframe(df_p)
