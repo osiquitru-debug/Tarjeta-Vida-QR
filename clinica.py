@@ -12,31 +12,21 @@ st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="cent
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
-    
-    /* Forzar texto negro en toda la aplicación */
     label, p, h1, h2, h3, span, div, li { color: #000000 !important; font-weight: 600 !important; }
-    
-    /* Casillas de entrada blancas con texto negro */
     input, textarea, [data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 2px solid #a2d2ff !important;
     }
-
-    /* Sidebar con color original */
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { 
         width: 100%; background-color: #ffffff !important; color: #000000 !important; 
         border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; 
     }
-
-    /* Botón de acción principal */
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; 
         border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
-
-    /* Tarjetas de diseño */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; 
         border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
@@ -64,18 +54,17 @@ def generar_pdf(paciente, historial):
     pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     
-    # Encabezado Paciente
     pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
     pdf.set_font("Arial", '', 11)
     pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/R')} | RH: {paciente.get('RH', 'N/R')} | Edad: {paciente.get('EDAD', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
+    pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/R')} ({paciente.get('TIPO DE DOCUMENTO', 'N/R')})", ln=True)
+    pdf.cell(0, 8, txt=f"Edad: {paciente.get('EDAD', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
+    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | RH: {paciente.get('RH', 'N/R')}", ln=True)
     pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
     pdf.ln(5)
     
-    # Historial con Marca de Tiempo
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -88,8 +77,6 @@ def generar_pdf(paciente, historial):
             pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
             pdf.set_font("Arial", '', 10)
             pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
-            pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}")
-            pdf.multi_cell(0, 5, txt=f"Procedimientos: {fila.get('PROCEDIMIENTOS', 'N/R')}")
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
@@ -111,7 +98,6 @@ df_p, df_h = cargar_datos()
 
 # --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
-
 with st.sidebar:
     st.image(URL_LOGO, use_container_width=True)
     st.markdown("---")
@@ -122,24 +108,35 @@ with st.sidebar:
 # --- 7. SECCIONES ---
 if st.session_state.menu == "Registrar":
     st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
+    
     with st.form("reg_form", clear_on_submit=True):
+        # ORDEN DE CAMPOS SOLICITADO
         nombre = st.text_input("Nombre Completo")
+        tipo_doc = st.selectbox("Tipo de documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Cédula de Extranjería", "Pasaporte", "Registro Civil"])
         cedula = st.text_input("Número de Documento")
-        condiciones = st.text_area("Condiciones Especiales / Alergias")
         edad = st.text_input("Edad")
-        rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        cel = st.text_input("Número de Celular")
         eps = st.text_input("EPS")
-        cel = st.text_input("Celular")
+        rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        condiciones = st.text_area("Condiciones Especiales / Alergias")
+        
         st.markdown("### 🚨 Contacto de Emergencia")
         e_nom = st.text_input("Nombre contacto emergencia")
         e_tel = st.text_input("Teléfono contacto emergencia")
+        
         if st.form_submit_button("GUARDAR PACIENTE"):
             if nombre and cedula:
                 payload = {
-                    "entry.346175428": nombre, "entry.1302424820": cedula.strip(),
-                    "entry.1801154005": edad, "entry.1043165037": cel, "entry.1172011247": eps,
-                    "entry.162368130": rh, "entry.346363": condiciones, 
-                    "entry.1892763134": e_nom, "entry.2011749615": e_tel
+                    "entry.346175428": nombre, 
+                    "entry.845812971": tipo_doc, # Asegúrate de que este ID sea el correcto para Tipo Doc
+                    "entry.1302424820": cedula.strip(),
+                    "entry.1801154005": edad, 
+                    "entry.1043165037": cel, 
+                    "entry.1172011247": eps,
+                    "entry.162368130": rh, 
+                    "entry.346363": condiciones, 
+                    "entry.1892763134": e_nom, 
+                    "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
                 st.success("✅ Paciente registrado.")
@@ -153,48 +150,29 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
+            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
             
-            st.download_button("🖨️ Descargar PDF Completo", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
-
-            # TARJETA DEL PACIENTE ACTUALIZADA CON EPS Y CONDICIONES
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="margin:0;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
-                <p><b>EPS:</b> {p.get('EPS', 'No registrada')} | <b>Celular:</b> {p.get('CELULAR', 'No registrado')}</p>
-                <p><b>Condiciones/Alergias:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna conocida')}</p>
+                <p><b>Doc:</b> {id_bus} ({p.get('TIPO DE DOCUMENTO', 'N/A')}) | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
+                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>Celular:</b> {p.get('CELULAR', 'N/A')}</p>
+                <p><b>Condiciones:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}</p>
                 <div class="emergency-box">
-                    <p style="margin:0; color: #c53030 !important;"><b>🚨 EMERGENCIA:</b></p>
-                    <p style="margin:0;">{p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}</p>
+                    <b>🚨 EMERGENCIA:</b> {p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Mostrar evoluciones (Marca de tiempo automática)
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
                 ts = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or ""
                 st.markdown(f"""
                 <div class="evolution-card">
                     <b>Evolución #{i+1} - Fecha: {ts}</b><br>
-                    🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}<br>
-                    💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}<br>
-                    📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}
+                    🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}
                 </div>
                 """, unsafe_allow_html=True)
-
-            with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Evolución")
-                t = st.text_input("Tratamiento")
-                m = st.text_area("Medicamentos")
-                pr = st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR"):
-                    requests.post(URL_FORM_HISTORIAL, data={
-                        "entry.2019369477": id_bus, "entry.611862537": t, 
-                        "entry.2016051626": m, "entry.1088523869": pr
-                    })
-                    st.cache_data.clear()
-                    st.rerun()
 
 elif st.session_state.menu == "Base":
     st.markdown("### 📊 Base de Datos")
