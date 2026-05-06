@@ -42,7 +42,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF CORREGIDA (SIN N/A) ---
+# --- 4. FUNCIÓN PDF ACTUALIZADA (FECHA EN TÍTULO) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -69,11 +69,11 @@ def generar_pdf(paciente, historial):
             pdf.set_font("Arial", 'B', 10)
             pdf.ln(3)
             
-            # Lógica para evitar el N/A en la fecha del PDF
+            # Fecha al lado del título
             ts = fila.get('MARCA DE TIEMPO')
-            fecha_display = f" - {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
+            fecha_txt = f" - {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
             
-            pdf.cell(0, 6, txt=f"REGISTRO #{i+1}{fecha_display}", ln=True)
+            pdf.cell(0, 6, txt=f"REGISTRO #{i+1}{fecha_txt}", ln=True)
             
             pdf.set_font("Arial", '', 10)
             pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/A')}")
@@ -165,17 +165,17 @@ elif st.session_state.menu == "Consulta":
             </div>
             """, unsafe_allow_html=True)
             
+            st.markdown("### 📅 Historial de Evoluciones")
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
                 ts = fila.get('MARCA DE TIEMPO')
-                # Lógica para que en la web tampoco salga el reloj si es N/A
-                ts_display = f"🕒 {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
+                # Muestra la fecha junto al título de la evolución en la web
+                ts_display = f" {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
                 
                 st.markdown(f"""
                 <div class="evolution-card">
                     <div class="evo-header">
-                        <span><b>Evolución #{i+1}</b></span>
-                        <span style="font-size: 0.85em;">{ts_display}</span>
+                        <span><b>Evolución #{i+1} {ts_display}</b></span>
                     </div>
                     <p>🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
                     <p>💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
@@ -190,11 +190,13 @@ elif st.session_state.menu == "Consulta":
                 m = st.text_area("Medicamentos")
                 pr = st.text_area("Procedimientos")
                 if st.form_submit_button("GUARDAR"):
+                    # Ahora guardamos la fecha en su propio campo de Marca de Tiempo y no en el tratamiento
                     requests.post(URL_FORM_HISTORIAL, data={
                         "entry.2019369477": id_bus, 
-                        "entry.611862537": f"[{f_ev}] {t}", 
+                        "entry.611862537": t, # Solo el texto del tratamiento
                         "entry.2016051626": m,
-                        "entry.1088523869": pr
+                        "entry.1088523869": pr,
+                        "entry.1234567890": f_ev # Ajusta este ID al campo de fecha en tu formulario de Google si lo tienes
                     })
                     st.cache_data.clear()
                     st.rerun()
