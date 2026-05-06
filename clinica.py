@@ -12,23 +12,18 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS ORIGINAL (RESTAURADO COMPLETAMENTE) ---
+# --- 2. DISEÑO CSS ORIGINAL ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
-    /* Forzar color negro en todas las etiquetas y textos */
     label, p, h1, h2, h3, span, div { color: #000000 !important; font-weight: 600 !important; }
-    
     div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
     input, textarea { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
-
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
-
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
-
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
@@ -47,31 +42,54 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF ---
+# --- 4. FUNCIÓN PDF ACTUALIZADA CON PROCEDIMIENTOS ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
+    
+    # Encabezado
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(10)
+    
+    # Datos del Paciente
     pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="DATOS GENERALES", ln=True, fill=True)
+    pdf.cell(0, 10, txt="DATOS GENERALES DEL PACIENTE", ln=True, fill=True)
     pdf.set_font("Arial", '', 11)
     pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/A')}", ln=True)
-    pdf.cell(0, 8, txt=f"ID: {paciente.get('DOCUMENTO', 'N/A')} | RH: {paciente.get('RH', 'N/A')}", ln=True)
+    pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/A')} | RH: {paciente.get('RH', 'N/A')}", ln=True)
+    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/A')} | Celular: {paciente.get('CELULAR', 'N/A')}", ln=True)
+    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES', 'Ninguna registrada')}")
     pdf.ln(5)
+    
+    # Historial de Evoluciones
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
+    
     if not historial.empty:
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
-            pdf.ln(2)
-            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/A')}")
+            pdf.ln(3)
+            # Título de la evolución y fecha
+            fecha_str = str(fila.get('MARCA DE TIEMPO', 'N/A'))
+            pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - Fecha/Hora: {fecha_str}", ln=True)
+            
             pdf.set_font("Arial", '', 10)
+            # Tratamiento
+            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/A')}")
+            # Medicamentos
             pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/A')}")
+            # PROCEDIMIENTOS (Agregado aquí)
+            pdf.multi_cell(0, 5, txt=f"Procedimientos: {fila.get('PROCEDIMIENTOS', 'N/A')}")
+            
+            pdf.ln(2)
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    else:
+        pdf.set_font("Arial", 'I', 10)
+        pdf.cell(0, 10, txt="No hay evoluciones registradas para este paciente.", ln=True)
+        
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 5. CARGA DE DATOS ---
@@ -143,9 +161,9 @@ elif st.session_state.menu == "Consulta":
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
             
-            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Historial_{id_bus}.pdf")
+            # El botón de descarga ahora usa la función con Procedimientos
+            st.download_button("🖨️ Descargar PDF Completo", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
 
-            # Búsqueda de contacto (Soporta "Telefono Contacto Emergencia")
             c_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
             c_tel = obtener_valor(p, ["TELEFONO", "CONTACTO", "EMERGENCIA"])
 
@@ -174,9 +192,9 @@ elif st.session_state.menu == "Consulta":
                         <span style="color: #2b6cb0;"><b>Evolución #{i+1}</b></span>
                         <span style="color: #000000; font-size: 0.85em;">{ts_display}</span>
                     </div>
-                    <p style="margin: 5px 0; color: #000000 !important;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                    <p style="margin: 5px 0; color: #000000 !important;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                    <p style="margin: 5px 0; color: #000000 !important;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
+                    <p style="margin: 5px 0;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
