@@ -11,52 +11,40 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO EN TONOS PASTEL E INTERFAZ MEJORADA ---
+# --- 2. DISEÑO CSS PERSONALIZADO (PASTEL) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Input y formularios */
+    /* Inputs y áreas de texto */
     input, textarea, [data-baseweb="select"] {
         color: #000000 !important;
         background-color: #ffffff !important;
         border: 1.5px solid #a2d2ff !important;
     }
 
-    /* Títulos y etiquetas */
-    label, p, h1, h2, h3, .stSubheader {
-        color: #2d3748 !important; 
-        font-weight: bold !important;
-    }
-
-    /* Sidebar Lavanda */
+    /* Estilo del Sidebar */
     [data-testid="stSidebar"] {
         background-color: #f3e8ff !important;
         border-right: 2px solid #e9d5ff;
     }
 
-    /* ESTILO DE BOTONES DE NAVEGACIÓN LATERAL */
-    .stSidebar [data-testid="stVerticalBlock"] > div:has(button) {
-        margin-bottom: -10px;
-    }
-    
+    /* Botones Laterales de Navegación */
     .stSidebar button {
         width: 100%;
         border-radius: 10px !important;
         border: 1px solid #d8b4fe !important;
-        text-align: left !important;
-        padding: 10px !important;
         background-color: #ffffff !important;
         color: #581c87 !important;
-        transition: all 0.3s ease;
+        margin-bottom: 8px;
+        font-weight: bold;
     }
-
     .stSidebar button:hover {
         background-color: #e9d5ff !important;
         border-color: #a855f7 !important;
     }
 
-    /* Botones principales de acción */
+    /* Botón de Guardar (Menta) */
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #99f6e4 !important;
         color: #134e4a !important;
@@ -64,12 +52,13 @@ st.markdown("""
         font-weight: bold !important;
         border: 1px solid #5eead4;
         width: 100%;
+        height: 3.2em;
     }
 
-    /* Tarjetas de Información */
+    /* Tarjetas de Paciente */
     .medical-card {
         background-color: #ffffff;
-        padding: 22px;
+        padding: 20px;
         border-radius: 15px;
         border-left: 12px solid #b2f5ea;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
@@ -107,127 +96,119 @@ def cargar_datos():
         return p, h
     except: return None, None
 
-df_pacientes, df_historial = cargar_datos()
+df_p, df_h = cargar_datos()
 
-# --- 5. LÓGICA DE NAVEGACIÓN POR BOTONES ---
-if 'menu_option' not in st.session_state:
-    st.session_state.menu_option = "Registrar Paciente"
+# --- 5. LÓGICA DE NAVEGACIÓN ---
+if 'menu' not in st.session_state:
+    st.session_state.menu = "Registrar"
 
-def set_menu(option):
-    st.session_state.menu_option = option
+def navegar(opcion):
+    st.session_state.menu = opcion
 
-# --- 6. SIDEBAR (BOTONES LATERALES) ---
 with st.sidebar:
-    st.markdown("### 🏥 **MENÚ PRINCIPAL**")
-    st.button("📝 Registrar Paciente", on_click=set_menu, args=("Registrar Paciente",))
-    st.button("🔍 Consulta e Historial", on_click=set_menu, args=("Consulta e Historial",))
-    st.button("📊 Base de Datos", on_click=set_menu, args=("Base de Datos",))
+    st.markdown("### 🏥 **TARJETA VIDA**")
+    st.button("📝 Registrar Paciente", on_click=navegar, args=("Registrar",))
+    st.button("🔍 Consulta e Historial", on_click=navegar, args=("Consulta",))
+    st.button("📊 Base de Datos", on_click=navegar, args=("Base",))
     st.markdown("---")
-    st.write(f"Seleccionado: **{st.session_state.menu_option}**")
+    st.caption(f"Sección activa: {st.session_state.menu}")
 
-# --- 7. CABECERA ---
-col1, col2, col3 = st.columns([1,2,1])
-with col2:
+# --- 6. CABECERA ---
+c1, c2, c3 = st.columns([1,2,1])
+with c2:
     try:
-        resp = requests.get(URL_LOGO_DIRECTA)
-        logo_img = Image.open(io.BytesIO(resp.content))
-        st.image(logo_img, use_container_width=True)
-    except: st.write("## 🩺 Tarjeta Vida")
+        logo = Image.open(io.BytesIO(requests.get(URL_LOGO_DIRECTA).content))
+        st.image(logo, use_container_width=True)
+    except: st.header("🩺 Tarjeta Vida")
 
 st.markdown("<h1 style='text-align: center;'>Gestión Médica Integral</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- SECCIÓN: REGISTRO ---
-if st.session_state.menu_option == "Registrar Paciente":
+# --- 7. SECCIONES ---
+
+# --- REGISTRO ---
+if st.session_state.menu == "Registrar":
     st.subheader("📝 Nuevo Registro")
-    with st.form("f_reg", clear_on_submit=True):
-        st.markdown("### 👤 Datos del Paciente")
-        c1, c2 = st.columns(2)
-        nombre = c1.text_input("Nombre Completo")
-        doc = c2.text_input("Documento de Identidad")
-        edad = c1.text_input("Edad")
-        rh = c2.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        eps = c1.text_input("EPS")
-        cel = c2.text_input("Celular")
+    with st.form("reg_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        nombre = col1.text_input("Nombre Completo")
+        cedula = col2.text_input("Documento de Identidad")
+        edad = col1.text_input("Edad")
+        rh = col2.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        eps = col1.text_input("EPS")
+        cel = col2.text_input("Teléfono Celular")
         
-        st.markdown("---")
         st.markdown("### 🚨 Contacto de Emergencia")
         ce1, ce2 = st.columns(2)
-        e_nom = ce1.text_input("Nombre del contacto de emergencia")
-        e_tel = ce2.text_input("Teléfono de contacto de emergencia")
+        e_nom = ce1.text_input("Nombre de contacto")
+        e_tel = ce2.text_input("Teléfono de contacto")
         
         if st.form_submit_button("GUARDAR REGISTRO"):
-            if nombre and doc:
+            if nombre and cedula:
                 payload = {
-                    "entry.346175428": nombre, "entry.1302424820": doc,
+                    "entry.346175428": nombre, "entry.1302424820": cedula,
                     "entry.1801154005": edad, "entry.162368130": rh,
                     "entry.1043165037": cel, "entry.1172011247": eps,
                     "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success(f"✅ Registrado exitosamente.")
+                st.success(f"✅ {nombre} registrado correctamente.")
                 st.cache_data.clear()
-            else: st.error("⚠️ Datos obligatorios faltantes.")
+            else: st.error("⚠️ Nombre y Documento son obligatorios.")
 
-# --- SECCIÓN: CONSULTA E HISTORIAL ---
-elif st.session_state.menu_option == "Consulta e Historial":
-    st.subheader("🔍 Evolución y Antecedentes")
-    id_buscar = st.text_input("Ingrese Cédula para buscar").strip()
+# --- CONSULTA E HISTORIAL ---
+elif st.session_state.menu == "Consulta":
+    st.subheader("🔍 Evolución Clínica")
+    id_bus = st.text_input("Ingrese Cédula para buscar").strip()
     
-    if id_buscar and df_pacientes is not None:
-        df_pacientes["DOCUMENTO"] = df_pacientes["DOCUMENTO"].astype(str).str.strip()
-        p_data = df_pacientes[df_pacientes["DOCUMENTO"] == id_buscar]
+    if id_bus and df_p is not None:
+        df_p["DOCUMENTO"] = df_p["DOCUMENTO"].astype(str).str.strip()
+        paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         
-        if not p_data.empty:
-            p = p_data.iloc[0]
-            
-            # Lógica inteligente de columnas para emergencia
-            col_nom_em = [c for c in p.index if "NOMBRE" in c and "EMERGENCIA" in c]
-            col_tel_em = [c for c in p.index if "TEL" in c and "EMERGENCIA" in c]
-            
-            e_nombre = p[col_nom_em[0]] if col_nom_em else "No registrado"
-            e_tel = p[col_tel_em[0]] if col_tel_em else "No registrado"
-
+        if not paciente.empty:
+            p = paciente.iloc[0]
             st.markdown(f"""
             <div class="medical-card">
-                <h3 style='margin:0; color:#2d3748;'>👤 {p.get('NOMBRE', 'N/A')}</h3>
-                <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>EPS:</b> {p.get('EPS', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <h3 style='margin:0;'>👤 {p.get('NOMBRE', 'N/A')}</h3>
+                <p><b>ID:</b> {p.get('DOCUMENTO', 'N/A')} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>EPS:</b> {p.get('EPS', 'N/A')}</p>
                 <div class="emergency-box">
-                    <p style='margin:0; color:#c53030; font-size: 0.9em;'><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style='margin:0; color:#2d3748; font-size: 1.1em;'>{e_nombre} — <b>Tel:</b> {e_tel}</p>
+                    <p style='margin:0; color:#c53030;'><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
+                    <p style='margin:0;'>{p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'No registrado')} — <b>Tel:</b> {p.get('TELEFONO DE CONTACTO DE EMERGENCIA', 'N/A')}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            st.subheader("📅 Historial Clínico")
-            if df_historial is not None:
-                df_historial["DOCUMENTO"] = df_historial["DOCUMENTO"].astype(str).str.strip()
-                h_previo = df_historial[df_historial["DOCUMENTO"] == id_buscar]
-                if not h_previo.empty:
-                    cols = [c for c in ["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in h_previo.columns]
-                    st.dataframe(h_previo[cols].iloc[::-1], use_container_width=True, hide_index=True)
-                else: st.info("Sin registros previos.")
-            
-            st.markdown("---")
-            st.subheader("✍️ Registrar Nueva Evolución")
-            with st.form("ev_f", clear_on_submit=True):
-                t = st.text_input("Tratamiento")
-                m = st.text_area("Medicamentos")
-                pr = st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR EVOLUCIÓN"):
-                    payload_h = {
-                        "entry.2019369477": id_buscar, "entry.611862537": t, 
-                        "entry.2016051626": m, "entry.ID_PROC": pr 
-                    }
-                    requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                    st.success("✅ Evolución guardada.")
-                    st.cache_data.clear()
-                    st.rerun()
-        else: st.error("Paciente no encontrado.")
+            st.write("### 📅 Historial Clínico")
+            if df_h is not None:
+                df_h["DOCUMENTO"] = df_h["DOCUMENTO"].astype(str).str.strip()
+                hist_p = df_h[df_h["DOCUMENTO"] == id_bus]
+                if not hist_p.empty:
+                    cols = [c for c in ["FECHA", "TRATAMIENTO", "MEDICAMENTOS", "PROCEDIMIENTOS"] if c in hist_p.columns]
+                    st.dataframe(hist_p[cols].iloc[::-1], use_container_width=True, hide_index=True)
+                else: st.info("Sin antecedentes registrados.")
 
-# --- SECCIÓN: BASE DE DATOS ---
+            st.markdown("---")
+            st.subheader("✍️ Registrar Evolución")
+            with st.form("h_form", clear_on_submit=True):
+                trat = st.text_input("Tratamiento")
+                meds = st.text_area("Medicamentos")
+                proc = st.text_area("Procedimientos")
+                
+                if st.form_submit_button("ACTUALIZAR HISTORIAL"):
+                    payload_h = {
+                        "entry.2019369477": id_bus, 
+                        "entry.611862537": trat, 
+                        "entry.2016051626": meds,
+                        "entry.1088523869": proc
+                    }
+                    if requests.post(URL_FORM_HISTORIAL, data=payload_h).status_code == 200:
+                        st.success("✅ Historial actualizado.")
+                        st.cache_data.clear()
+                        st.rerun()
+
+# --- BASE DE DATOS ---
 else:
     st.subheader("📊 Bases de Datos")
-    t1, t2 = st.tabs(["Pacientes", "Historial"])
-    if df_pacientes is not None: t1.dataframe(df_pacientes)
-    if df_historial is not None: t2.dataframe(df_historial)
+    t1, t2 = st.tabs(["Pacientes", "Historial General"])
+    if df_p is not None: t1.dataframe(df_p, use_container_width=True)
+    if df_h is not None: t2.dataframe(df_h, use_container_width=True)
