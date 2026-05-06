@@ -8,12 +8,12 @@ import io
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS ORIGINAL (RESTAURADO Y MEJORADO) ---
+# --- 2. DISEÑO CSS (TEXTO NEGRO Y FORMATO ORIGINAL) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Texto Negro en toda la aplicación */
+    /* Forzar texto negro en toda la aplicación */
     label, p, h1, h2, h3, span, div, li { color: #000000 !important; font-weight: 600 !important; }
     
     /* Casillas de entrada blancas con texto negro */
@@ -56,7 +56,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF (FORMATO CORREGIDO) ---
+# --- 4. FUNCIÓN PDF (MARCA DE TIEMPO Y DATOS COMPLETOS) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -75,7 +75,7 @@ def generar_pdf(paciente, historial):
     pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
     pdf.ln(5)
     
-    # Historial
+    # Historial con Marca de Tiempo
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -84,7 +84,6 @@ def generar_pdf(paciente, historial):
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
             pdf.ln(3)
-            # Captura de la marca de tiempo de Sheets
             fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
             pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
             pdf.set_font("Arial", '', 10)
@@ -110,7 +109,7 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-# --- 6. NAVEGACIÓN (RESTAURADA) ---
+# --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 
 with st.sidebar:
@@ -157,16 +156,21 @@ elif st.session_state.menu == "Consulta":
             
             st.download_button("🖨️ Descargar PDF Completo", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
 
+            # TARJETA DEL PACIENTE ACTUALIZADA CON EPS Y CONDICIONES
             st.markdown(f"""
             <div class="medical-card">
-                <h2>👤 {p.get('NOMBRE', 'N/A')}</h2>
+                <h2 style="margin:0;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
+                <p><b>EPS:</b> {p.get('EPS', 'No registrada')} | <b>Celular:</b> {p.get('CELULAR', 'No registrado')}</p>
+                <p><b>Condiciones/Alergias:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna conocida')}</p>
                 <div class="emergency-box">
-                    <b>🚨 EMERGENCIA:</b> {p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}
+                    <p style="margin:0; color: #c53030 !important;"><b>🚨 EMERGENCIA:</b></p>
+                    <p style="margin:0;">{p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
+            # Mostrar evoluciones (Marca de tiempo automática)
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
                 ts = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or ""
