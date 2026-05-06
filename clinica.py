@@ -62,7 +62,7 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-# --- 5. FUNCIÓN PDF (ACTUALIZADA CON NUEVOS CAMPOS) ---
+# --- 5. FUNCIÓN PDF (ACTUALIZADA CON EPICRISIS) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -99,6 +99,7 @@ def generar_pdf(paciente, historial):
             pdf.multi_cell(0, 5, txt=f"Antecedentes: {fila.get('ANTECEDENTES MEDICOS', 'N/R')}")
             pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}")
             pdf.multi_cell(0, 5, txt=f"Laboratorios: {fila.get('LABORATORIOS', 'N/R')}")
+            pdf.multi_cell(0, 5, txt=f"Epicrisis: {fila.get('EPICRISIS', 'N/R')}")
             pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
             pdf.ln(3)
     return pdf.output(dest='S').encode('latin-1', 'replace')
@@ -179,6 +180,7 @@ elif st.session_state.menu == "Consulta":
                     <p><b>📜 Antecedentes:</b> {fila.get('ANTECEDENTES MEDICOS', 'N/A')}</p>
                     <p><b>💊 Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
                     <p><b>🧪 Laboratorios:</b> {fila.get('LABORATORIOS', 'N/A')}</p>
+                    <p><b>📋 Epicrisis:</b> {fila.get('EPICRISIS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -197,6 +199,7 @@ elif st.session_state.menu == "Consulta":
                 antecedentes = st.text_area("Antecedentes Médicos")
                 medicamentos = st.text_area("Medicamentos")
                 laboratorios = st.text_area("Laboratorios / Procedimientos")
+                epicrisis = st.text_area("Epicrisis")
                 
                 if st.form_submit_button("GUARDAR REGISTRO"):
                     payload_h = {
@@ -208,7 +211,8 @@ elif st.session_state.menu == "Consulta":
                         "entry.889985940": antecedentes,
                         "entry.2016051626": medicamentos,
                         "entry.882053172": presion,
-                        "entry.1088523869": laboratorios
+                        "entry.1088523869": laboratorios,
+                        "entry.616774918": epicrisis
                     }
                     requests.post(URL_FORM_HISTORIAL, data=payload_h)
                     st.cache_data.clear()
