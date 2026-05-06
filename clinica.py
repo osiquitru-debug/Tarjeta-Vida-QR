@@ -42,28 +42,24 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF ACTUALIZADA CON PROCEDIMIENTOS ---
+# --- 4. FUNCIÓN PDF CORREGIDA (SIN N/A) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
-    
-    # Encabezado
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(10)
     
-    # Datos del Paciente
+    # Datos Generales
     pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="DATOS GENERALES DEL PACIENTE", ln=True, fill=True)
     pdf.set_font("Arial", '', 11)
     pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/A')}", ln=True)
     pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/A')} | RH: {paciente.get('RH', 'N/A')}", ln=True)
-    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/A')} | Celular: {paciente.get('CELULAR', 'N/A')}", ln=True)
-    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES', 'Ninguna registrada')}")
     pdf.ln(5)
     
-    # Historial de Evoluciones
+    # Evoluciones
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -72,24 +68,19 @@ def generar_pdf(paciente, historial):
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
             pdf.ln(3)
-            # Título de la evolución y fecha
-            fecha_str = str(fila.get('MARCA DE TIEMPO', 'N/A'))
-            pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - Fecha/Hora: {fecha_str}", ln=True)
+            
+            # Lógica para evitar el N/A en la fecha del PDF
+            ts = fila.get('MARCA DE TIEMPO')
+            fecha_display = f" - {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
+            
+            pdf.cell(0, 6, txt=f"REGISTRO #{i+1}{fecha_display}", ln=True)
             
             pdf.set_font("Arial", '', 10)
-            # Tratamiento
             pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/A')}")
-            # Medicamentos
             pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/A')}")
-            # PROCEDIMIENTOS (Agregado aquí)
             pdf.multi_cell(0, 5, txt=f"Procedimientos: {fila.get('PROCEDIMIENTOS', 'N/A')}")
-            
             pdf.ln(2)
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    else:
-        pdf.set_font("Arial", 'I', 10)
-        pdf.cell(0, 10, txt="No hay evoluciones registradas para este paciente.", ln=True)
-        
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 5. CARGA DE DATOS ---
@@ -128,28 +119,24 @@ if st.session_state.menu == "Registrar":
     st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
     with st.form("reg_form", clear_on_submit=True):
         nombre = st.text_input("Nombre Completo")
-        c1, c2 = st.columns(2)
-        tipo_doc = c1.selectbox("Tipo de Documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Registro Civil", "Cédula de Extranjería"])
-        cedula = c2.text_input("Número de Documento")
+        cedula = st.text_input("Número de Documento")
         condiciones = st.text_area("Condiciones Especiales / Alergias")
-        c3, c4 = st.columns(2)
-        edad = c3.text_input("Edad")
-        rh = c4.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        c5, c6 = st.columns(2)
-        eps = c5.text_input("EPS")
-        cel = c6.text_input("Celular")
+        rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        eps = st.text_input("EPS")
+        cel = st.text_input("Celular")
         st.markdown("### 🚨 Contacto de Emergencia")
         e_nom = st.text_input("Nombre contacto emergencia")
         e_tel = st.text_input("Teléfono contacto emergencia")
         if st.form_submit_button("GUARDAR PACIENTE"):
             if nombre and cedula:
                 payload = {
-                    "entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": cedula.strip(),
-                    "entry.1801154005": edad, "entry.1043165037": cel, "entry.1172011247": eps,
-                    "entry.162368130": rh, "entry.346363": condiciones, "entry.1892763134": e_nom, "entry.2011749615": e_tel
+                    "entry.346175428": nombre, "entry.1302424820": cedula.strip(),
+                    "entry.1043165037": cel, "entry.1172011247": eps,
+                    "entry.162368130": rh, "entry.346363": condiciones, 
+                    "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente guardado correctamente.")
+                st.success("✅ Paciente registrado.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
@@ -161,40 +148,38 @@ elif st.session_state.menu == "Consulta":
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
             
-            # El botón de descarga ahora usa la función con Procedimientos
-            st.download_button("🖨️ Descargar PDF Completo", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
+            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
 
             c_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
-            c_tel = obtener_valor(p, ["TELEFONO", "CONTACTO", "EMERGENCIA"])
+            c_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"])
 
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="color: #000000 !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>Condiciones:</b> {obtener_valor(p, ["CONDICIONES"])}</p>
-                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div class="emergency-box">
                     <p style="margin:0; color: #c53030 !important;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0; color: #000000 !important;">{c_nom} - {c_tel}</p>
+                    <p style="margin:0;">{c_nom} - {c_tel}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            st.markdown("### 📅 Historial de Evoluciones")
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
                 ts = fila.get('MARCA DE TIEMPO')
-                ts_display = f"🕒 {ts}" if pd.notnull(ts) and ts != "N/A" else ""
+                # Lógica para que en la web tampoco salga el reloj si es N/A
+                ts_display = f"🕒 {ts}" if pd.notnull(ts) and str(ts).strip().upper() != "N/A" else ""
                 
                 st.markdown(f"""
                 <div class="evolution-card">
                     <div class="evo-header">
-                        <span style="color: #2b6cb0;"><b>Evolución #{i+1}</b></span>
-                        <span style="color: #000000; font-size: 0.85em;">{ts_display}</span>
+                        <span><b>Evolución #{i+1}</b></span>
+                        <span style="font-size: 0.85em;">{ts_display}</span>
                     </div>
-                    <p style="margin: 5px 0;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                    <p style="margin: 5px 0;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                    <p style="margin: 5px 0;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
+                    <p>🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
+                    <p>💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p>📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -211,12 +196,9 @@ elif st.session_state.menu == "Consulta":
                         "entry.2016051626": m,
                         "entry.1088523869": pr
                     })
-                    st.success("✅ Guardado.")
                     st.cache_data.clear()
                     st.rerun()
 
 elif st.session_state.menu == "Base":
     st.markdown("### 📊 Base de Datos")
-    t1, t2 = st.tabs(["Pacientes registrados", "Historial de evoluciones"])
-    if df_p is not None: t1.dataframe(df_p)
-    if df_h is not None: t2.dataframe(df_h)
+    if df_p is not None: st.dataframe(df_p)
