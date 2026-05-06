@@ -9,7 +9,7 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS (ESTÉTICA PASTEL + ALERTAS + IMPRESIÓN) ---
+# --- 2. DISEÑO CSS (ESTÉTICA PASTEL ORIGINAL) ---
 st.markdown("""
     <style>
     /* Estilos Globales */
@@ -29,23 +29,11 @@ st.markdown("""
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
 
-    /* Diseño de la Tarjeta del Paciente */
+    /* Diseño de la Tarjeta del Paciente Única */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
     
-    /* Efecto de Alerta Crítica */
-    .alert-card {
-        background-color: #fff5f5; padding: 20px; border-radius: 15px; border: 2px solid #feb2b2; border-left: 15px solid #f56565; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
-        animation: pulse-red 2s infinite;
-    }
-
-    @keyframes pulse-red {
-        0% { box-shadow: 0 0 0 0px rgba(245, 101, 101, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(245, 101, 101, 0); }
-        100% { box-shadow: 0 0 0 0px rgba(245, 101, 101, 0); }
-    }
-
     .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
 
     .evolution-card {
@@ -56,7 +44,7 @@ st.markdown("""
     @media print {
         header, .stSidebar, .stButton, div[data-testid="stForm"], .stTabs { display: none !important; }
         .stApp { background-color: white !important; }
-        .medical-card, .alert-card { border: 1px solid #000 !important; box-shadow: none !important; animation: none !important; }
+        .medical-card { border: 1px solid #000 !important; box-shadow: none !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -73,7 +61,6 @@ def cargar_datos():
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
-        # Limpieza de documentos para evitar errores de tipo
         for df in [p, h]:
             if 'DOCUMENTO' in df.columns:
                 df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.split('.').str[0].str.strip()
@@ -104,46 +91,38 @@ if st.session_state.menu == "Registrar":
         c3, c4 = st.columns(2)
         eps = c3.text_input("EPS")
         cel = c4.text_input("Celular")
-        alertas_inp = st.text_area("⚠️ Alertas Médicas (Alergias, condiciones crónicas)")
         
         st.markdown("### 🚨 Emergencia")
         e_nom = st.text_input("Nombre Contacto")
         e_tel = st.text_input("Teléfono Contacto")
         
         if st.form_submit_button("GUARDAR PACIENTE"):
-            # Enviar a Google Forms
             payload = {
                 "entry.346175428": nombre, "entry.1302424820": cedula,
                 "entry.1172011247": eps, "entry.162368130": rh, 
-                "entry.1043165037": cel, "entry.346363": alertas_inp, 
-                "entry.1892763134": e_nom, "entry.2011749615": e_tel
+                "entry.1043165037": cel, "entry.1892763134": e_nom, "entry.2011749615": e_tel
             }
             requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-            st.success("✅ Datos enviados correctamente.")
+            st.success("✅ Paciente registrado con éxito.")
             st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.markdown("<h1 style='text-align: center;'>Consulta Médica</h1>", unsafe_allow_html=True)
-    busqueda = st.text_input("Ingrese Documento del Paciente").strip()
+    busqueda = st.text_input("Ingrese Documento").strip()
     
     if busqueda and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == busqueda]
         
         if not paciente.empty:
             p = paciente.iloc[0]
-            
-            # Lógica de Alerta Médica
-            alert_val = str(p.get('CONDICIONES ESPECIALES', '')).strip()
-            es_alerta = alert_val.lower() not in ['nan', '', 'ninguna', 'no', 'n/a']
-            clase_tarjeta = "alert-card" if es_alerta else "medical-card"
 
-            # RENDERIZADO DE LA TARJETA QUE TE GUSTA
+            # RENDERIZADO DE LA TARJETA (Label único)
             st.markdown(f"""
-            <div class="{clase_tarjeta}">
-                <h2 style="color: black !important;">{'⚠️' if es_alerta else '👤'} {p.get('NOMBRE', 'N/A')}</h2>
-                {f'<p style="color: #c53030; font-weight: bold;">ALERTA: {alert_val}</p>' if es_alerta else ''}
+            <div class="medical-card">
+                <h2 style="color: black !important; margin-bottom: 15px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {busqueda} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
+                
                 <div class="emergency-box">
                     <p style="color: red !important; margin:0;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
                     <p style="margin:0; color: black !important;"><b>Nombre:</b> {p.get('NOMBRE DEL CONTACTO DE EMERGENCIA', 'N/A')}</p>
@@ -180,7 +159,7 @@ elif st.session_state.menu == "Consulta":
         else: st.error("Paciente no encontrado.")
 
 elif st.session_state.menu == "Base":
-    st.subheader("📊 Bases de Datos Integradas")
+    st.subheader("📊 Bases de Datos")
     tab1, tab2 = st.tabs(["Pacientes", "Historiales"])
     if df_p is not None: tab1.dataframe(df_p)
     if df_h is not None: tab2.dataframe(df_h)
