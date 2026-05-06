@@ -12,18 +12,23 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS ORIGINAL ---
+# --- 2. DISEÑO CSS ORIGINAL (RESTAURADO COMPLETAMENTE) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
-    label, p, h1, h2, h3, span { color: #000000 !important; font-weight: 600 !important; }
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
-    input, textarea { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
+    /* Forzar color negro en todas las etiquetas y textos */
+    label, p, h1, h2, h3, span, div { color: #000000 !important; font-weight: 600 !important; }
+    
+    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
+    input, textarea { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important; }
+
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
+
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
+
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
@@ -31,7 +36,7 @@ st.markdown("""
         background-color: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 8px solid #63b3ed; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .evo-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; margin-bottom: 10px; padding-bottom: 5px; }
-    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 1px solid #feb2b2; margin-top: 10px; }
+    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -75,7 +80,6 @@ def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
-        # Normalizamos los nombres de las columnas a Mayúsculas para que el código las encuentre siempre
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
         for df in [p, h]:
@@ -87,7 +91,6 @@ def cargar_datos():
 df_p, df_h = cargar_datos()
 
 def obtener_valor(df_row, keywords):
-    # Esta función busca en las columnas del renglón si contienen las palabras clave
     for col in df_row.index:
         if all(word.upper() in col.upper() for word in keywords):
             return df_row[col]
@@ -128,7 +131,7 @@ if st.session_state.menu == "Registrar":
                     "entry.162368130": rh, "entry.346363": condiciones, "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente registrado correctamente.")
+                st.success("✅ Paciente guardado correctamente.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
@@ -142,20 +145,19 @@ elif st.session_state.menu == "Consulta":
             
             st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Historial_{id_bus}.pdf")
 
-            # BUSQUEDA DEL NOMBRE Y TELÉFONO DE CONTACTO
-            # Buscamos por palabras clave para mayor seguridad
-            contacto_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
-            contacto_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"])
+            # Búsqueda de contacto (Soporta "Telefono Contacto Emergencia")
+            c_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
+            c_tel = obtener_valor(p, ["TELEFONO", "CONTACTO", "EMERGENCIA"])
 
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
+                <h2 style="color: #000000 !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>Condiciones:</b> {obtener_valor(p, ["CONDICIONES"])}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div class="emergency-box">
                     <p style="margin:0; color: #c53030 !important;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0;">{contacto_nom} - {contacto_tel}</p>
+                    <p style="margin:0; color: #000000 !important;">{c_nom} - {c_tel}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -170,24 +172,24 @@ elif st.session_state.menu == "Consulta":
                 <div class="evolution-card">
                     <div class="evo-header">
                         <span style="color: #2b6cb0;"><b>Evolución #{i+1}</b></span>
-                        <span style="color: #718096; font-size: 0.85em;">{ts_display}</span>
+                        <span style="color: #000000; font-size: 0.85em;">{ts_display}</span>
                     </div>
-                    <p style="margin: 5px 0;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                    <p style="margin: 5px 0;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                    <p style="margin: 5px 0;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0; color: #000000 !important;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
+                    <p style="margin: 5px 0; color: #000000 !important;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0; color: #000000 !important;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             with st.form("h_form", clear_on_submit=True):
                 st.write("### ✍️ Registrar Evolución")
-                fecha_input = st.text_input("Fecha", value=datetime.now().strftime('%d/%m/%Y'))
+                f_ev = st.text_input("Fecha", value=datetime.now().strftime('%d/%m/%Y'))
                 t = st.text_input("Tratamiento")
                 m = st.text_area("Medicamentos")
                 pr = st.text_area("Procedimientos")
                 if st.form_submit_button("GUARDAR"):
                     requests.post(URL_FORM_HISTORIAL, data={
                         "entry.2019369477": id_bus, 
-                        "entry.611862537": f"[{fecha_input}] {t}", 
+                        "entry.611862537": f"[{f_ev}] {t}", 
                         "entry.2016051626": m,
                         "entry.1088523869": pr
                     })
