@@ -8,18 +8,35 @@ import io
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS (TEXTO NEGRO Y ESTILOS ORIGINALES) ---
+# --- 2. DISEÑO CSS (REFORZADO PARA TEXTO NEGRO) ---
 st.markdown("""
     <style>
+    /* Fondo de la app */
     .stApp { background-color: #f0fff4 !important; }
-    label, p, h1, h2, h3, span, div { color: #000000 !important; font-weight: 600 !important; }
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
-    input, textarea { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
+    
+    /* Forzar texto negro en TODO: inputs, labels, áreas de texto y selectores */
+    html, body, [class*="st-"] {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Estilo específico para casillas de entrada */
+    input, textarea, [data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 2px solid #a2d2ff !important;
+    }
+
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
-    .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
+    .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; }
+
+    /* Botón principal */
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
+
+    /* Tarjetas */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
@@ -37,7 +54,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF (FECHA EN TÍTULO Y DATOS COMPLETOS) ---
+# --- 4. FUNCIÓN PDF (CORREGIDA PARA LA FECHA) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -45,7 +62,7 @@ def generar_pdf(paciente, historial):
     pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     
-    # Datos del Paciente
+    # Datos del Paciente Completo
     pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
@@ -53,10 +70,10 @@ def generar_pdf(paciente, historial):
     pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/R')}", ln=True)
     pdf.cell(0, 8, txt=f"ID: {paciente.get('DOCUMENTO', 'N/R')} | RH: {paciente.get('RH', 'N/R')} | Edad: {paciente.get('EDAD', 'N/R')}", ln=True)
     pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
-    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
+    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna registrada')}")
     pdf.ln(5)
     
-    # Evoluciones
+    # Evoluciones con Fecha Corregida
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -65,7 +82,9 @@ def generar_pdf(paciente, historial):
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
             pdf.ln(3)
-            fecha = fila.get('MARCA DE TIEMPO', '')
+            # Intentamos obtener la fecha de varias posibles columnas de Google Sheets
+            fecha = fila.get('MARCA DE TIEMPO') or fila.get('TIMESTAMP') or "Fecha no registrada"
+            
             pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - Fecha: {fecha}", ln=True)
             pdf.set_font("Arial", '', 10)
             pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
@@ -90,13 +109,7 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-def obtener_valor(df_row, keywords):
-    for col in df_row.index:
-        if all(word.upper() in col.upper() for word in keywords):
-            return df_row[col]
-    return "No registrado"
-
-# --- 6. NAVEGACIÓN LATERAL (RESTAURADA) ---
+# --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 with st.sidebar:
     st.image(URL_LOGO, use_container_width=True)
@@ -144,19 +157,17 @@ elif st.session_state.menu == "Consulta":
 
             st.markdown(f"""
             <div class="medical-card">
-                <h2>👤 {p.get('NOMBRE', 'N/A')}</h2>
+                <h2 style="margin:0;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
-                <p><b>Condiciones:</b> {obtener_valor(p, ["CONDICIONES"])}</p>
                 <div class="emergency-box">
-                    <p style="margin:0; color: #c53030 !important;"><b>🚨 EMERGENCIA:</b></p>
-                    <p style="margin:0;">{p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}</p>
+                    <b>🚨 EMERGENCIA:</b> {p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
-                ts = fila.get('MARCA DE TIEMPO', '')
+                ts = fila.get('MARCA DE TIEMPO') or fila.get('TIMESTAMP') or ""
                 st.markdown(f"""
                 <div class="evolution-card">
                     <b>Evolución #{i+1} - Fecha: {ts}</b><br>
