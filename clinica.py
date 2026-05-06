@@ -8,21 +8,38 @@ import io
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS (TEXTO NEGRO Y FORMATO ORIGINAL) ---
+# --- 2. DISEÑO CSS (LOGOTIPO CENTRADO Y TEXTO NEGRO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
+    
+    /* Centrar Logo en la Sidebar */
+    [data-testid="stSidebarNav"] { padding-top: 20px; }
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Texto Negro en toda la aplicación */
     label, p, h1, h2, h3, span, div, li { color: #000000 !important; font-weight: 600 !important; }
+    
+    /* Casillas de entrada blancas con texto negro */
     input, textarea, [data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 2px solid #a2d2ff !important;
     }
+
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { 
         width: 100%; background-color: #ffffff !important; color: #000000 !important; 
         border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; 
     }
+
+    /* Botones y Tarjetas */
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; 
         border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
@@ -46,7 +63,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF (MARCA DE TIEMPO Y DATOS COMPLETOS) ---
+# --- 4. FUNCIÓN PDF ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -63,8 +80,8 @@ def generar_pdf(paciente, historial):
     pdf.cell(0, 8, txt=f"Edad: {paciente.get('EDAD', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
     pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | RH: {paciente.get('RH', 'N/R')}", ln=True)
     pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
-    pdf.ln(5)
     
+    pdf.ln(5)
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -72,12 +89,12 @@ def generar_pdf(paciente, historial):
     if not historial.empty:
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
-            pdf.ln(3)
             fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
-            pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
+            pdf.cell(0, 8, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
             pdf.set_font("Arial", '', 10)
             pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
-            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
+            pdf.ln(2)
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 5. CARGA DE DATOS ---
@@ -99,7 +116,8 @@ df_p, df_h = cargar_datos()
 # --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 with st.sidebar:
-    st.image(URL_LOGO, use_container_width=True)
+    # Logo centrado mediante el CSS definido arriba
+    st.image(URL_LOGO, width=150) 
     st.markdown("---")
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
@@ -108,9 +126,7 @@ with st.sidebar:
 # --- 7. SECCIONES ---
 if st.session_state.menu == "Registrar":
     st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
-    
     with st.form("reg_form", clear_on_submit=True):
-        # ORDEN DE CAMPOS SOLICITADO
         nombre = st.text_input("Nombre Completo")
         tipo_doc = st.selectbox("Tipo de documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Cédula de Extranjería", "Pasaporte", "Registro Civil"])
         cedula = st.text_input("Número de Documento")
@@ -127,30 +143,26 @@ if st.session_state.menu == "Registrar":
         if st.form_submit_button("GUARDAR PACIENTE"):
             if nombre and cedula:
                 payload = {
-                    "entry.346175428": nombre, 
-                    "entry.845812971": tipo_doc, # Asegúrate de que este ID sea el correcto para Tipo Doc
-                    "entry.1302424820": cedula.strip(),
-                    "entry.1801154005": edad, 
-                    "entry.1043165037": cel, 
-                    "entry.1172011247": eps,
-                    "entry.162368130": rh, 
-                    "entry.346363": condiciones, 
-                    "entry.1892763134": e_nom, 
-                    "entry.2011749615": e_tel
+                    "entry.346175428": nombre, "entry.845812971": tipo_doc,
+                    "entry.1302424820": cedula.strip(), "entry.1801154005": edad, 
+                    "entry.1043165037": cel, "entry.1172011247": eps,
+                    "entry.162368130": rh, "entry.346363": condiciones, 
+                    "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente registrado.")
+                st.success("✅ Paciente registrado con éxito.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
-    id_bus = st.text_input("Ingrese Documento").strip()
+    id_bus = st.text_input("Ingrese Documento del Paciente").strip()
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         if not paciente.empty:
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
-            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
+            
+            st.download_button("🖨️ Descargar Reporte PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
             
             st.markdown(f"""
             <div class="medical-card">
@@ -174,6 +186,19 @@ elif st.session_state.menu == "Consulta":
                 </div>
                 """, unsafe_allow_html=True)
 
+            with st.form("h_form", clear_on_submit=True):
+                st.write("### ✍️ Registrar Nueva Evolución")
+                t = st.text_input("Tratamiento / Observaciones")
+                m = st.text_area("Medicamentos")
+                pr = st.text_area("Procedimientos")
+                if st.form_submit_button("GUARDAR REGISTRO"):
+                    requests.post(URL_FORM_HISTORIAL, data={
+                        "entry.2019369477": id_bus, "entry.611862537": t, 
+                        "entry.2016051626": m, "entry.1088523869": pr
+                    })
+                    st.cache_data.clear()
+                    st.rerun()
+
 elif st.session_state.menu == "Base":
-    st.markdown("### 📊 Base de Datos")
+    st.markdown("### 📊 Base de Datos General")
     if df_p is not None: st.dataframe(df_p)
