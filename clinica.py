@@ -20,7 +20,7 @@ st.markdown("""
     div[data-baseweb="select"] > div { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
     input, textarea { background-color: #ffffff !important; border: 2px solid #a2d2ff !important; }
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
-    .stSidebar button { width: 100%; background-color: #ffffff !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
+    .stSidebar button { width: 100%; background-color: #ffffff !important; color: #000000 !important; border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; }
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
@@ -75,6 +75,7 @@ def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
+        # Normalizamos los nombres de las columnas a Mayúsculas para que el código las encuentre siempre
         p.columns = p.columns.str.strip().str.upper()
         h.columns = h.columns.str.strip().str.upper()
         for df in [p, h]:
@@ -86,8 +87,9 @@ def cargar_datos():
 df_p, df_h = cargar_datos()
 
 def obtener_valor(df_row, keywords):
+    # Esta función busca en las columnas del renglón si contienen las palabras clave
     for col in df_row.index:
-        if all(word in col for word in keywords):
+        if all(word.upper() in col.upper() for word in keywords):
             return df_row[col]
     return "No registrado"
 
@@ -126,7 +128,7 @@ if st.session_state.menu == "Registrar":
                     "entry.162368130": rh, "entry.346363": condiciones, "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente guardado.")
+                st.success("✅ Paciente registrado correctamente.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
@@ -140,9 +142,10 @@ elif st.session_state.menu == "Consulta":
             
             st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Historial_{id_bus}.pdf")
 
-            # BUSQUEDA FLEXIBLE DE CONTACTO:
+            # BUSQUEDA DEL NOMBRE Y TELÉFONO DE CONTACTO
+            # Buscamos por palabras clave para mayor seguridad
             contacto_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
-            contacto_tel = obtener_valor(p, ["TEL", "CONTACTO"]) if "No registrado" not in obtener_valor(p, ["TEL", "CONTACTO"]) else obtener_valor(p, ["EMERGENCIA"])
+            contacto_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"])
 
             st.markdown(f"""
             <div class="medical-card">
@@ -169,9 +172,9 @@ elif st.session_state.menu == "Consulta":
                         <span style="color: #2b6cb0;"><b>Evolución #{i+1}</b></span>
                         <span style="color: #718096; font-size: 0.85em;">{ts_display}</span>
                     </div>
-                    <p>🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                    <p>💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                    <p>📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0;">🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
+                    <p style="margin: 5px 0;">💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p style="margin: 5px 0;">📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -188,11 +191,12 @@ elif st.session_state.menu == "Consulta":
                         "entry.2016051626": m,
                         "entry.1088523869": pr
                     })
+                    st.success("✅ Guardado.")
                     st.cache_data.clear()
                     st.rerun()
 
 elif st.session_state.menu == "Base":
     st.markdown("### 📊 Base de Datos")
-    t1, t2 = st.tabs(["Pacientes", "Historial"])
+    t1, t2 = st.tabs(["Pacientes registrados", "Historial de evoluciones"])
     if df_p is not None: t1.dataframe(df_p)
     if df_h is not None: t2.dataframe(df_h)
