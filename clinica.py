@@ -9,12 +9,12 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS ACTUALIZADO (Corrección de colores) ---
+# --- 2. DISEÑO CSS (Corrección de Herencia de Color) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Se eliminó el !important global para permitir colores personalizados en las tarjetas */
+    /* Estilos base para elementos de texto */
     label, h1, h2, h3, span { color: #000000 !important; font-weight: 600 !important; }
     p { color: #000000; font-weight: 600; } 
 
@@ -31,7 +31,7 @@ st.markdown("""
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
 
-    /* Tarjetas */
+    /* Tarjetas y Contenedores */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
@@ -46,7 +46,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. URLs Y RECURSOS ---
+# --- 3. RECURSOS EXTERNOS ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 
@@ -54,7 +54,7 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. CARGA DE DATOS ---
+# --- 4. FUNCIONES DE DATOS ---
 @st.cache_data(ttl=1)
 def cargar_datos():
     try:
@@ -68,15 +68,15 @@ def cargar_datos():
         return p, h
     except: return None, None
 
-df_p, df_h = cargar_datos()
-
 def obtener_valor(df_row, keywords):
     for col in df_row.index:
         if all(word in col for word in keywords):
             return df_row[col]
     return "No registrado"
 
-# --- 5. NAVEGACIÓN ---
+df_p, df_h = cargar_datos()
+
+# --- 5. LÓGICA DE NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 with st.sidebar:
     st.image(URL_LOGO, use_container_width=True)
@@ -85,7 +85,7 @@ with st.sidebar:
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
     if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
-# --- 6. SECCIONES ---
+# --- 6. RENDERIZADO DE SECCIONES ---
 
 if st.session_state.menu == "Registrar":
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -99,6 +99,7 @@ if st.session_state.menu == "Registrar":
         tipo_doc = c1.selectbox("Tipo de Documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Registro Civil", "Cédula de Extranjería"])
         cedula = c2.text_input("Número de Documento")
         
+        # Nuevo campo para Alergias/Condiciones
         condiciones = st.text_area("Condiciones Especiales (Alergias, Enfermedades de base)", placeholder="Ej: Alérgico a penicilina, Diabetes tipo 2...")
         
         c3, c4 = st.columns(2)
@@ -119,7 +120,7 @@ if st.session_state.menu == "Registrar":
                     "entry.1302424820": cedula.strip(), "entry.1801154005": edad,
                     "entry.1043165037": cel, "entry.1172011247": eps,
                     "entry.162368130": rh, "entry.1892763134": e_nom, "entry.2011749615": e_tel,
-                    "entry.NUEVO_ID_AQUÍ": condiciones # REEMPLAZAR CON ID REAL
+                    "entry.NUEVO_ID_AQUÍ": condiciones # REEMPLAZAR CON ID REAL DE GOOGLE FORMS
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
                 st.success("✅ Paciente registrado con éxito.")
@@ -137,10 +138,12 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
+            # Recuperación de datos
             emer_nom = obtener_valor(p, ["NOMBRE", "EMERGENCIA"])
             emer_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"]) or obtener_valor(p, ["TEL", "EMERGENCIA"])
             cond_val = obtener_valor(p, ["CONDICIONES", "ESPECIALES"]) or "Ninguna registrada"
             
+            # --- TARJETA VISUAL DEL PACIENTE ---
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="color: black !important; margin-bottom:5px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
