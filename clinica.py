@@ -9,7 +9,7 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS PASTEL CON ALERTAS ---
+# --- 2. DISEÑO CSS PASTEL ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -28,12 +28,11 @@ st.markdown("""
         background-color: #4fd1c5 !important; color: #000000 !important; border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
 
-    /* Tarjetas de Paciente (Normal) */
+    /* Tarjetas de Paciente */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
     
-    /* Tarjeta de Alerta (Crítica) */
     .alert-card {
         background-color: #fff5f5; padding: 20px; border-radius: 15px; border: 2px solid #feb2b2; border-left: 15px solid #f56565; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
         animation: pulse-red 2s infinite;
@@ -53,7 +52,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. URLS Y CARGA DE DATOS ---
+# --- 3. DATOS Y CARGA ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
@@ -77,11 +76,13 @@ df_p, df_h = cargar_datos()
 
 # --- 4. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
+
 with st.sidebar:
     st.image(URL_LOGO, use_container_width=True)
     st.markdown("---")
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
+    if st.button("📊 Base de Datos"): st.session_state.menu = "Base" # Botón restaurado
 
 # --- 5. SECCIONES ---
 if st.session_state.menu == "Registrar":
@@ -102,28 +103,30 @@ if st.session_state.menu == "Registrar":
         if st.form_submit_button("GUARDAR PACIENTE"):
             payload = {"entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": cedula.strip(), "entry.1172011247": eps, "entry.162368130": rh, "entry.1043165037": cel, "entry.346363": alertas, "entry.1892763134": e_nom, "entry.2011749615": e_tel}
             requests.post(URL_FORM_PACIENTES, data=payload)
-            st.success("✅ Registrado.")
+            st.success("✅ Paciente registrado con éxito.")
             st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
-    bus = st.text_input("🔍 Ingrese Documento").strip()
+    bus = st.text_input("🔍 Ingrese Documento del Paciente").strip()
+    
     if bus and df_p is not None:
         pac = df_p[df_p["DOCUMENTO"] == bus]
         if not pac.empty:
             p = pac.iloc[0]
+            # Lógica de alertas
             alerta_medica = str(p.get('CONDICIONES ESPECIALES', '')).strip()
-            tiene_alerta = alerta_medica.lower() not in ['nan', '', 'ninguna', 'no']
+            tiene_alerta = alerta_medica.lower() not in ['nan', '', 'ninguna', 'no', 'n/a']
             clase = "alert-card" if tiene_alerta else "medical-card"
 
-            # --- AJUSTE INSERTADO AQUÍ ---
+            # Visualización de la tarjeta
             st.markdown(f"""
             <div class="{clase}">
                 <h2 style="color: black !important;">{'⚠️' if tiene_alerta else '👤'} {p.get('NOMBRE', 'N/A')}</h2>
                 {f'<p style="color: #c53030; font-weight: bold;">ALERTA MÉDICA: {alerta_medica}</p>' if tiene_alerta else ''}
                 
                 <p><b>ID:</b> {bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
-                <p><b>EPS:</b> {p.get('EPS', 'Emcosalud')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
+                <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 
                 <div class="emergency-box">
                     <p style="color: red !important; margin:0;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
@@ -132,18 +135,24 @@ elif st.session_state.menu == "Consulta":
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            # --- FIN DEL AJUSTE ---
 
             with st.form("h_form", clear_on_submit=True):
                 st.subheader("✍️ Registrar Evolución")
                 t, m, pr = st.text_input("Tratamiento"), st.text_area("Medicamentos"), st.text_area("Procedimientos")
                 if st.form_submit_button("GUARDAR EN HISTORIAL"):
                     requests.post(URL_FORM_HISTORIAL, data={"entry.2019369477": bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr})
-                    st.cache_data.clear(); st.rerun()
+                    st.success("✅ Guardado."); st.cache_data.clear(); st.rerun()
 
             if df_h is not None:
                 h_p = df_h[df_h["DOCUMENTO"] == bus]
-                for i in range(len(h_p)-1, -1, -1):
-                    f = h_p.iloc[i]
-                    st.markdown(f"""<div class="evolution-card"><div class="evo-header"><b>Evolución #{i+1}</b> <span>🕒 {f.get('MARCA DE TIEMPO')}</span></div><p><b>Tratamiento:</b> {f.get('TRATAMIENTO')}</p><p><b>Medicamentos:</b> {f.get('MEDICAMENTOS')}</p></div>""", unsafe_allow_html=True)
-        else: st.error("❌ No encontrado.")
+                if not h_p.empty:
+                    for i in range(len(h_p)-1, -1, -1):
+                        f = h_p.iloc[i]
+                        st.markdown(f"""<div class="evolution-card"><div class="evo-header"><b>Evolución #{i+1}</b> <span>🕒 {f.get('MARCA DE TIEMPO')}</span></div><p><b>🩺 Tratamiento:</b> {f.get('TRATAMIENTO')}</p><p><b>💊 Medicamentos:</b> {f.get('MEDICAMENTOS')}</p></div>""", unsafe_allow_html=True)
+        else: st.error("❌ Paciente no encontrado.")
+
+elif st.session_state.menu == "Base": # Sección de Base de Datos restaurada
+    st.markdown("<h1 style='text-align: center;'>📊 Bases de Datos</h1>", unsafe_allow_html=True)
+    t1, t2 = st.tabs(["📋 Pacientes", "📔 Historial"])
+    if df_p is not None: t1.dataframe(df_p, use_container_width=True)
+    if df_h is not None: t2.dataframe(df_h, use_container_width=True)
