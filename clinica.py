@@ -37,9 +37,6 @@ st.markdown("""
     }
     .evo-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; margin-bottom: 10px; padding-bottom: 5px; }
     .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
-    
-    /* Estilo para el texto de alergias */
-    .alergia-text { color: #c53030 !important; background-color: #fff5f5; padding: 5px 10px; border-radius: 8px; font-weight: bold; display: inline-block; margin-bottom: 10px; border: 1px solid #feb2b2; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -101,7 +98,6 @@ if st.session_state.menu == "Registrar":
         c5, c6 = st.columns(2)
         eps = c5.text_input("EPS")
         cel = c6.text_input("Celular")
-        alergias_input = st.text_area("⚠️ Alergias o Condiciones Especiales")
         
         st.markdown("### 🚨 Contacto de Emergencia")
         e_nom = st.text_input("Nombre contacto emergencia")
@@ -113,8 +109,7 @@ if st.session_state.menu == "Registrar":
                     "entry.346175428": nombre, "entry.1650757004": tipo_doc,
                     "entry.1302424820": cedula.strip(), "entry.1801154005": edad,
                     "entry.1043165037": cel, "entry.1172011247": eps,
-                    "entry.162368130": rh, "entry.1892763134": e_nom, "entry.2011749615": e_tel,
-                    "entry.346363": alergias_input # Asegúrate que este ID sea el de tu campo de alergias
+                    "entry.162368130": rh, "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
                 st.success("✅ Paciente registrado con éxito.")
@@ -133,13 +128,10 @@ elif st.session_state.menu == "Consulta":
             p = paciente.iloc[0]
             emer_nom = obtener_valor(p, ["NOMBRE", "EMERGENCIA"])
             emer_tel = obtener_valor(p, ["TELEFONO", "EMERGENCIA"]) or obtener_valor(p, ["TEL", "EMERGENCIA"])
-            # Buscar el valor de alergias en el DataFrame
-            alergias = obtener_valor(p, ["ALERGIA"]) or obtener_valor(p, ["CONDICION"])
             
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style="color: black !important; margin-bottom: 5px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                {f'<div class="alergia-text">⚠️ ALERGIAS: {alergias}</div>' if alergias and str(alergias).lower() not in ['nan', 'no', 'ninguna', 'no registrado'] else ''}
+                <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
                 <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div class="emergency-box">
