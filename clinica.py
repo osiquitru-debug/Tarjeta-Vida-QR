@@ -12,7 +12,7 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# --- 2. DISEÑO CSS (CONSERVANDO TU ESTILO) ---
+# --- 2. DISEÑO CSS ORIGINAL ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -126,7 +126,7 @@ if st.session_state.menu == "Registrar":
                     "entry.162368130": rh, "entry.346363": condiciones, "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Registrado.")
+                st.success("✅ Paciente guardado.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
@@ -138,9 +138,12 @@ elif st.session_state.menu == "Consulta":
             p = paciente.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
             
-            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"{id_bus}.pdf")
+            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Historial_{id_bus}.pdf")
 
-            # --- TARJETA MÉDICA CORREGIDA CON CONTACTO DE EMERGENCIA ---
+            # BUSQUEDA FLEXIBLE DE CONTACTO:
+            contacto_nom = obtener_valor(p, ["NOMBRE", "CONTACTO"])
+            contacto_tel = obtener_valor(p, ["TEL", "CONTACTO"]) if "No registrado" not in obtener_valor(p, ["TEL", "CONTACTO"]) else obtener_valor(p, ["EMERGENCIA"])
+
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="color: black !important;">👤 {p.get('NOMBRE', 'N/A')}</h2>
@@ -149,7 +152,7 @@ elif st.session_state.menu == "Consulta":
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')} | <b>CEL:</b> {p.get('CELULAR', 'N/A')}</p>
                 <div class="emergency-box">
                     <p style="margin:0; color: #c53030 !important;"><b>🚨 CONTACTO DE EMERGENCIA:</b></p>
-                    <p style="margin:0;">{obtener_valor(p, ["NOMBRE CONTACTO"])} - {obtener_valor(p, ["TELÉFONO CONTACTO"])}</p>
+                    <p style="margin:0;">{contacto_nom} - {contacto_tel}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -157,7 +160,6 @@ elif st.session_state.menu == "Consulta":
             st.markdown("### 📅 Historial de Evoluciones")
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
-                # Corregimos el N/A: Si la marca de tiempo no existe o es nula, no mostramos el reloj
                 ts = fila.get('MARCA DE TIEMPO')
                 ts_display = f"🕒 {ts}" if pd.notnull(ts) and ts != "N/A" else ""
                 
@@ -169,17 +171,23 @@ elif st.session_state.menu == "Consulta":
                     </div>
                     <p>🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
                     <p>💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p>📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             with st.form("h_form", clear_on_submit=True):
                 st.write("### ✍️ Registrar Evolución")
-                fecha_input = st.text_input("Fecha (DD/MM/AAAA)", value=datetime.now().strftime('%d/%m/%Y'))
+                fecha_input = st.text_input("Fecha", value=datetime.now().strftime('%d/%m/%Y'))
                 t = st.text_input("Tratamiento")
                 m = st.text_area("Medicamentos")
+                pr = st.text_area("Procedimientos")
                 if st.form_submit_button("GUARDAR"):
-                    tratamiento_final = f"[{fecha_input}] {t}"
-                    requests.post(URL_FORM_HISTORIAL, data={"entry.2019369477": id_bus, "entry.611862537": tratamiento_final, "entry.2016051626": m})
+                    requests.post(URL_FORM_HISTORIAL, data={
+                        "entry.2019369477": id_bus, 
+                        "entry.611862537": f"[{fecha_input}] {t}", 
+                        "entry.2016051626": m,
+                        "entry.1088523869": pr
+                    })
                     st.cache_data.clear()
                     st.rerun()
 
