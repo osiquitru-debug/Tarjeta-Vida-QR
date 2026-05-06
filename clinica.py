@@ -28,14 +28,14 @@ st.markdown("""
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
     }
+    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 15px; }
     .evolution-card {
-        background-color: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 8px solid #63b3ed; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background-color: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 8px solid #63b3ed; margin-bottom: 20px;
     }
-    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. RECURSOS ---
+# --- 3. DATOS Y RECURSOS ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
@@ -55,21 +55,23 @@ def cargar_datos():
         return p, h
     except: return None, None
 
-def obtener_valor(df_row, keywords):
-    for col in df_row.index:
-        if all(word in col for word in keywords):
-            return df_row[col]
+# Función de búsqueda flexible para columnas
+def buscar_dato(fila, palabras_clave):
+    for col in fila.index:
+        if all(palabra.upper() in col.upper() for palabra in palabras_clave):
+            return fila[col]
     return "No registrado"
 
 df_p, df_h = cargar_datos()
 
 # --- 4. NAVEGACIÓN ---
-if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
+if 'menu' not in st.session_state: st.session_state.menu = "Consulta"
+
 with st.sidebar:
     st.image(URL_LOGO, use_container_width=True)
     st.markdown("---")
-    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
+    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
 # --- 5. SECCIONES ---
@@ -79,13 +81,11 @@ if st.session_state.menu == "Registrar":
     with st.form("reg_form", clear_on_submit=True):
         nombre = st.text_input("Nombre Completo")
         c1, c2 = st.columns(2)
-        tipo_doc = c1.selectbox("Tipo de Documento", ["C.C.", "T.I.", "R.C.", "C.E."])
-        cedula = c2.text_input("Número de Documento")
+        cedula = c1.text_input("Número de Documento")
+        rh = c2.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         c3, c4 = st.columns(2)
-        rh = c3.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        eps = c4.text_input("EPS")
-        # CASILLA PARA DILIGENCIAR ALERGIAS
-        alergias_input = st.text_input("Alergias o Medicamentos Contraindicados")
+        eps = c3.text_input("EPS")
+        alergias = st.text_input("Alergias / Contraindicaciones")
         
         st.markdown("### 🚨 Contacto de Emergencia")
         e_nom = st.text_input("Nombre contacto")
@@ -96,54 +96,71 @@ if st.session_state.menu == "Registrar":
                 payload = {
                     "entry.346175428": nombre, "entry.1302424820": cedula.strip(),
                     "entry.1172011247": eps, "entry.162368130": rh, 
-                    "entry.346363": alergias_input, # ID del campo en Google Forms
+                    "entry.346363": alergias, 
                     "entry.1892763134": e_nom, "entry.2011749615": e_tel
                 }
                 requests.post(URL_FORM_PACIENTES, data=payload)
-                st.success("✅ Paciente guardado.")
+                st.success("✅ Guardado correctamente.")
                 st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
-    st.markdown("<h1 style='text-align: center;'>Consulta</h1>", unsafe_allow_html=True)
-    id_bus = st.text_input("Documento del paciente").strip()
+    st.markdown("<h1 style='text-align: center;'>Consulta Médica</h1>", unsafe_allow_html=True)
+    id_bus = st.text_input("Ingrese Documento").strip()
     
     if id_bus and df_p is not None:
         paciente = df_p[df_p["DOCUMENTO"] == id_bus]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # Extraer alergias de la base de datos
-            alergias_val = obtener_valor(p, ["ALERGIA"])
             
+            # Recuperar datos con búsqueda flexible
+            alergias_val = buscar_dato(p, ["ALERGIA"])
+            emer_nom = buscar_dato(p, ["NOMBRE", "EMERGENCIA"])
+            emer_tel = buscar_dato(p, ["TEL", "EMERGENCIA"])
+
+            # TARJETA DEL PACIENTE
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style="color: black !important; margin-bottom: 10px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
+                <h2 style="margin-bottom:10px;">👤 {p.get('NOMBRE', 'N/A')}</h2>
+                <p><b>DOCUMENTO:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')}</p>
                 <p><b>EPS:</b> {p.get('EPS', 'N/A')}</p>
                 <p><b>⚠️ ALERGIAS:</b> {alergias_val}</p>
                 
                 <div class="emergency-box">
-                    <p style="color: red !important; margin:0;"><b>🚨 EMERGENCIA:</b></p>
-                    <p style="margin:0; color: black !important;">{obtener_valor(p, ["NOMBRE", "EMERGENCIA"])} - {obtener_valor(p, ["TELEFONO", "EMERGENCIA"])}</p>
+                    <p style="color: #c53030; margin:0; font-size: 1.1em;"><b>🚨 CONTACTO DE EMERGENCIA</b></p>
+                    <p style="margin:5px 0 0 0; color: black;"><b>Nombre:</b> {emer_nom}</p>
+                    <p style="margin:2px 0 0 0; color: black;"><b>Teléfono:</b> {emer_tel}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Historial y formulario de evolución (simplificado para lectura)
+            # Botón de impresión
+            if st.button("🖨️ Imprimir Tarjeta"):
+                st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
+
+            # Historial
+            st.markdown("---")
             if df_h is not None:
                 h_p = df_h[df_h["DOCUMENTO"] == id_bus]
                 if not h_p.empty:
-                    st.write("### 📜 Historial")
+                    st.write("### 📜 Historial de Evoluciones")
                     for _, fila in h_p.iloc[::-1].iterrows():
-                        st.markdown(f"""<div class="evolution-card"><b>{fila.get('MARCA DE TIEMPO', '')}</b><br>{fila.get('TRATAMIENTO', 'N/A')}</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class="evolution-card">
+                            <small>{fila.get('MARCA DE TIEMPO', '')}</small><br>
+                            <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}<br>
+                            <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}
+                        </div>
+                        """, unsafe_allow_html=True)
 
-            with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Nueva Evolución")
-                t, m = st.text_input("Tratamiento"), st.text_area("Medicamentos")
-                if st.form_submit_button("GUARDAR"):
+            with st.form("evo_form", clear_on_submit=True):
+                st.write("### ✍️ Registrar Evolución")
+                t = st.text_input("Tratamiento / Diagnóstico")
+                m = st.text_area("Medicamentos / Observaciones")
+                if st.form_submit_button("GUARDAR EVOLUCIÓN"):
                     requests.post(URL_FORM_HISTORIAL, data={"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m})
-                    st.success("✅ Guardado.")
+                    st.success("✅ Evolución guardada.")
                     st.cache_data.clear(); st.rerun()
-        else: st.error("❌ No encontrado.")
+        else: st.error("❌ Paciente no encontrado.")
 
 else:
     st.subheader("📊 Base de Datos")
