@@ -7,7 +7,7 @@ import io
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS ---
+# --- 2. DISEÑO CSS (CENTRAR LOGO Y TEXTO NEGRO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -62,7 +62,7 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-# --- 5. FUNCIÓN PDF (COMPLETA) ---
+# --- 5. FUNCIÓN PDF (ACTUALIZADA CON NUEVOS CAMPOS) ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -70,6 +70,7 @@ def generar_pdf(paciente, historial):
     pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     
+    # Datos Personales
     pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
@@ -80,6 +81,7 @@ def generar_pdf(paciente, historial):
     pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
     pdf.ln(5)
     
+    # Evoluciones
     pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
@@ -87,13 +89,16 @@ def generar_pdf(paciente, historial):
     if not historial.empty:
         for i, fila in historial.iterrows():
             pdf.set_font("Arial", 'B', 10)
-            fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
+            fecha = fila.get('MARCA TEMPORAL') or "S/F"
             pdf.ln(2)
             pdf.cell(0, 7, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
             pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
+            pdf.multi_cell(0, 5, txt=f"Motivo: {fila.get('MOTIVO DE LA CONSULTA', 'N/R')}")
+            pdf.multi_cell(0, 5, txt=f"Valoración: {fila.get('VALORACIÓN', 'N/R')}")
+            pdf.cell(0, 5, txt=f"Talla: {fila.get('TALLA', 'N/R')} | Peso: {fila.get('PESO', 'N/R')} | PA: {fila.get('PRESIÓN ARTERIAL', 'N/R')}", ln=True)
+            pdf.multi_cell(0, 5, txt=f"Antecedentes: {fila.get('ANTECEDENTES MEDICOS', 'N/R')}")
             pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}")
-            pdf.multi_cell(0, 5, txt=f"Procedimientos: {fila.get('PROCEDIMIENTOS', 'N/R')}")
+            pdf.multi_cell(0, 5, txt=f"Laboratorios: {fila.get('LABORATORIOS', 'N/R')}")
             pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
             pdf.ln(3)
     return pdf.output(dest='S').encode('latin-1', 'replace')
@@ -147,6 +152,7 @@ elif st.session_state.menu == "Consulta":
             h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
             st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
             
+            # Tarjeta Principal
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style="margin:0;">👤 {p.get('NOMBRE', 'N/A')}</h2>
@@ -159,31 +165,52 @@ elif st.session_state.menu == "Consulta":
             </div>
             """, unsafe_allow_html=True)
             
+            # Evoluciones detalladas
             st.subheader("Evoluciones Registradas")
             for i in range(len(h_p)-1, -1, -1):
                 fila = h_p.iloc[i]
-                ts = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
+                ts = fila.get('MARCA TEMPORAL') or "S/F"
                 st.markdown(f"""
                 <div class="evolution-card">
-                    <p style="margin:0; border-bottom: 1px solid #63b3ed; padding-bottom: 5px; margin-bottom: 10px;">
-                        <b>📅 Fecha: {ts} (Registro #{i+1})</b>
-                    </p>
-                    <p>🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}</p>
-                    <p>💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
-                    <p>📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}</p>
+                    <p style="border-bottom: 1px solid #63b3ed; padding-bottom: 5px;"><b>📅 Fecha: {ts}</b></p>
+                    <p><b>🔍 Motivo:</b> {fila.get('MOTIVO DE LA CONSULTA', 'N/A')}</p>
+                    <p><b>📝 Valoración:</b> {fila.get('VALORACIÓN', 'N/A')}</p>
+                    <p><b>📏 Talla:</b> {fila.get('TALLA', 'N/A')} | <b>⚖️ Peso:</b> {fila.get('PESO', 'N/A')} | <b>💓 PA:</b> {fila.get('PRESIÓN ARTERIAL', 'N/A')}</p>
+                    <p><b>📜 Antecedentes:</b> {fila.get('ANTECEDENTES MEDICOS', 'N/A')}</p>
+                    <p><b>💊 Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}</p>
+                    <p><b>🧪 Laboratorios:</b> {fila.get('LABORATORIOS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
+            # Formulario de Evolución Actualizado
             with st.form("h_form", clear_on_submit=True):
-                st.write("### ✍️ Registrar Evolución")
-                t = st.text_input("Tratamiento")
-                m = st.text_area("Medicamentos")
-                pr = st.text_area("Procedimientos")
-                if st.form_submit_button("GUARDAR"):
-                    requests.post(URL_FORM_HISTORIAL, data={
-                        "entry.2019369477": id_bus, "entry.611862537": t, 
-                        "entry.2016051626": m, "entry.1088523869": pr
-                    })
+                st.write("### ✍️ Registrar Evolución Médica")
+                col1, col2 = st.columns(2)
+                with col1:
+                    motivo = st.text_input("Motivo de la Consulta")
+                    talla = st.text_input("Talla (cm)")
+                    presion = st.text_input("Presión Arterial")
+                with col2:
+                    valoracion = st.text_input("Valoración")
+                    peso = st.text_input("Peso (kg)")
+                    
+                antecedentes = st.text_area("Antecedentes Médicos")
+                medicamentos = st.text_area("Medicamentos")
+                laboratorios = st.text_area("Laboratorios / Procedimientos")
+                
+                if st.form_submit_button("GUARDAR REGISTRO"):
+                    payload_h = {
+                        "entry.2019369477": id_bus,
+                        "entry.611862537": motivo,
+                        "entry.1275746503": valoracion,
+                        "entry.949747647": talla,
+                        "entry.2091389798": peso,
+                        "entry.889985940": antecedentes,
+                        "entry.2016051626": medicamentos,
+                        "entry.882053172": presion,
+                        "entry.1088523869": laboratorios
+                    }
+                    requests.post(URL_FORM_HISTORIAL, data=payload_h)
                     st.cache_data.clear()
                     st.rerun()
 
