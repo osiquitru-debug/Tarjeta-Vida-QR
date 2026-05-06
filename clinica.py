@@ -2,12 +2,11 @@ import streamlit as st
 import pandas as pd
 import requests
 from fpdf import FPDF
-import io
 
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS (ESTÉTICA Y ALTO CONTRASTE) ---
+# --- 2. ESTÉTICA Y DISEÑO (FONDO VERDE MENTA, SIDEBAR MORADO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -58,11 +57,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. RECURSOS Y CARGA ---
+# --- 3. RECURSOS Y LINKS (ACTUALIZADOS) ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 URL_BASE_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
+
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
+# Link actualizado según tu última entrada
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
 @st.cache_data(ttl=1)
@@ -82,7 +83,7 @@ def generar_pdf_hc(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "HISTORIA CLÍNICA - TARJETA VIDA", ln=True, align='C')
+    pdf.cell(0, 10, "REPORTE CLÍNICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f"PACIENTE: {paciente.get('NOMBRE', 'N/A')}", ln=True)
@@ -90,9 +91,16 @@ def generar_pdf_hc(paciente, historial):
     pdf.cell(0, 8, f"DOC: {paciente.get('DOCUMENTO', 'N/A')} | RH: {paciente.get('RH', 'N/A')}", ln=True)
     pdf.ln(5)
     for _, f in historial.iterrows():
-        pdf.set_fill_color(230, 240, 255)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_font("Arial", 'B', 10)
         pdf.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL', 'S/F')}", ln=True, fill=True)
-        pdf.multi_cell(0, 5, f"Motivo: {f.get('MOTIVO DE LA CONSULTA', 'N/A')}\nEpicrisis: {f.get('EPICRISIS', 'N/A')}")
+        pdf.set_font("Arial", '', 9)
+        info = (f"Motivo: {f.get('MOTIVO DE LA CONSULTA', 'N/A')}\n"
+                f"Valoración: {f.get('VALORACIÓN', 'N/A')}\n"
+                f"Talla: {f.get('TALLA', 'N/A')} | Peso: {f.get('PESO', 'N/A')} | TA: {f.get('PRESIÓN ARTERIAL', 'N/A')}\n"
+                f"Medicamentos: {f.get('MEDICAMENTOS', 'N/A')}\n"
+                f"Epicrisis: {f.get('EPICRISIS', 'N/A')}")
+        pdf.multi_cell(0, 5, info)
         pdf.ln(4)
     return pdf.output(dest='S').encode('latin-1')
 
@@ -108,7 +116,7 @@ with st.sidebar:
 
 st.markdown(f'<div class="logo-container"><img src="{URL_LOGO}" width="180"></div>', unsafe_allow_html=True)
 
-# --- SECCIÓN: REGISTRAR (CON EMERGENCIA RESTAURADA) ---
+# --- SECCIÓN: REGISTRAR ---
 if st.session_state.menu == "Registrar":
     st.markdown("<h1 style='text-align: center;'>Registro de Pacientes</h1>", unsafe_allow_html=True)
     with st.form("reg_form", clear_on_submit=True):
@@ -123,8 +131,8 @@ if st.session_state.menu == "Registrar":
             eps = st.text_input("EPS")
         
         st.markdown("### 🚨 Contacto de Emergencia")
-        e_nom = st.text_input("Nombre de contacto de emergencia")
-        e_tel = st.text_input("Teléfono de contacto de emergencia")
+        e_nom = st.text_input("Nombre de contacto")
+        e_tel = st.text_input("Teléfono de contacto")
         
         if st.form_submit_button("GUARDAR PACIENTE"):
             payload_p = {
@@ -133,10 +141,10 @@ if st.session_state.menu == "Registrar":
                 "entry.1892763134": e_nom, "entry.2011749615": e_tel
             }
             requests.post(URL_FORM_PACIENTES, data=payload_p)
-            st.success("✅ Paciente y contacto de emergencia guardados.")
+            st.success("✅ Paciente guardado.")
             st.cache_data.clear()
 
-# --- SECCIÓN: CONSULTA E HISTORIAL ---
+# --- SECCIÓN: CONSULTA E HISTORIAL (ORDEN ACTUALIZADO) ---
 elif st.session_state.menu == "Consulta":
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
     busq = st.text_input("Documento del Paciente").strip()
@@ -147,8 +155,7 @@ elif st.session_state.menu == "Consulta":
             p = pac.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == busq] if df_h is not None else pd.DataFrame()
             
-            # Botón PDF
-            st.download_button("📥 Descargar PDF", data=generar_pdf_hc(p, h_p), file_name=f"HC_{busq}.pdf")
+            st.download_button("📥 DESCARGAR REPORTE PDF", data=generar_pdf_hc(p, h_p), file_name=f"HC_{busq}.pdf")
 
             st.markdown(f"""
             <div class="medical-card">
@@ -160,27 +167,36 @@ elif st.session_state.menu == "Consulta":
             </div>
             """, unsafe_allow_html=True)
 
-            with st.expander("✍️ AGREGAR EVOLUCIÓN MÉDICA"):
+            with st.expander("✍️ AGREGAR EVOLUCIÓN (SEGÚN ORDEN FORMULARIO)"):
                 with st.form("h_form", clear_on_submit=True):
+                    # Organizado para coincidir visualmente y con el payload
                     motivo = st.text_input("Motivo de la Consulta")
-                    meds = st.text_area("Medicamentos")
                     val = st.text_input("Valoración")
                     c1, c2, c3 = st.columns(3)
                     talla = c1.text_input("Talla (cm)")
                     peso = c2.text_input("Peso (kg)")
                     pa = c3.text_input("Presión Arterial")
                     ant = st.text_area("Antecedentes Médicos")
+                    meds = st.text_area("Medicamentos")
                     lab = st.text_area("Laboratorios")
                     epi = st.text_area("Epicrisis")
                     
                     if st.form_submit_button("GUARDAR EN HISTORIAL"):
+                        # MAPEADO EXACTO SEGÚN TU LINK
                         payload_h = {
-                            "entry.2019369477": busq, "entry.611862537": motivo, "entry.2016051626": meds,
-                            "entry.1275746503": val, "entry.949747647": talla, "entry.2091389798": peso,
-                            "entry.889985940": ant, "entry.882053172": pa, "entry.1088523869": lab, "entry.616774918": epi
+                            "entry.2019369477": busq,    # Documento
+                            "entry.611862537": motivo,    # Motivo
+                            "entry.1275746503": val,      # Valoración
+                            "entry.949747647": talla,     # Talla
+                            "entry.2091389798": peso,     # Peso
+                            "entry.889985940": ant,       # Antecedentes
+                            "entry.2016051626": meds,      # Medicamentos
+                            "entry.882053172": pa,        # Presión Arterial
+                            "entry.1088523869": lab,      # Laboratorios
+                            "entry.616774918": epi        # Epicrisis
                         }
                         requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                        st.success("✅ Evolución guardada.")
+                        st.success("✅ Datos enviados.")
                         st.cache_data.clear()
                         st.rerun()
 
@@ -190,15 +206,9 @@ elif st.session_state.menu == "Consulta":
                 <div class="evolution-card">
                     <p style="color:#2b6cb0;">📅 <b>FECHA: {f.get('MARCA TEMPORAL', 'S/F')}</b></p>
                     <p><b>🔍 MOTIVO:</b> {f.get('MOTIVO DE LA CONSULTA', 'N/A')}</p>
-                    <p><b>💊 MEDICAMENTOS:</b> {f.get('MEDICAMENTOS', 'N/A')}</p>
                     <p><b>📋 VALORACIÓN:</b> {f.get('VALORACIÓN', 'N/A')}</p>
                     <p><b>📏 TALLA:</b> {f.get('TALLA', 'N/A')} | <b>⚖️ PESO:</b> {f.get('PESO', 'N/A')} | <b>💓 TA:</b> {f.get('PRESIÓN ARTERIAL', 'N/A')}</p>
+                    <p><b>💊 MEDICAMENTOS:</b> {f.get('MEDICAMENTOS', 'N/A')}</p>
                     <p><b>📝 EPICRISIS:</b> {f.get('EPICRISIS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
-
-# --- SECCIÓN: BASE DE DATOS ---
-elif st.session_state.menu == "Base":
-    st.markdown("<h1 style='text-align: center;'>Base de Datos</h1>", unsafe_allow_html=True)
-    if df_p is not None: st.dataframe(df_p)
-    if df_h is not None: st.dataframe(df_h)
