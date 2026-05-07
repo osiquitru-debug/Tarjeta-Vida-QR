@@ -6,6 +6,9 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
+# Enlace de descarga directa del logo
+LOGO_URL = "https://lh3.googleusercontent.com/d/1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+
 st.markdown("""
     <style>
     .stApp { background-color: #f0f7f4 !important; }
@@ -51,11 +54,8 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # LOGO CENTRADO EN EL MENÚ
-    col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
-    with col_s2:
-        st.image("vidaqr.jpeg")
-    
+    # Imagen centrada en el sidebar
+    st.image(LOGO_URL, use_container_width=True)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -64,14 +64,13 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    # LOGO CENTRADO SOBRE EL TÍTULO
-    st.image("vidaqr.jpeg", width=200)
+    st.image(LOGO_URL, width=200)
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
 
 elif st.session_state.menu == "Registrar":
-    st.image("vidaqr.jpeg", width=100)
+    st.image(LOGO_URL, width=100)
     st.title("📝 REGISTRO DE NUEVO PACIENTE")
     with st.form("form_registro_paciente", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -100,7 +99,7 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al enviar datos.")
 
 elif st.session_state.menu == "Consulta":
-    st.image("vidaqr.jpeg", width=100)
+    st.image(LOGO_URL, width=100)
     st.title("🔍 CONSULTA MÉDICA")
     busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
