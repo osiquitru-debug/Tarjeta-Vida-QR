@@ -51,8 +51,6 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # LOGO EN EL MENÚ
-    st.image("vidaqr.jpeg", use_container_width=True)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -61,10 +59,6 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    # LOGO SOBRE EL TÍTULO
-    col_logo, _ = st.columns([1, 2])
-    with col_logo:
-        st.image("vidaqr.jpeg", width=150)
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
@@ -117,6 +111,7 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
+            # --- BOTÓN DE PDF ---
             if not h_p.empty:
                 pdf = FPDF()
                 pdf.add_page()
