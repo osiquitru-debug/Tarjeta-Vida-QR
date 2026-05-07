@@ -33,7 +33,6 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # Imagen centrada en el sidebar usando columnas
     col_s1, col_s2, col_s3 = st.columns([1, 3, 1])
     with col_s2:
         st.image(LOGO_URL)
@@ -46,7 +45,6 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    # Imagen centrada sobre el título
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.image(LOGO_URL)
@@ -69,9 +67,26 @@ elif st.session_state.menu == "Registrar":
             celular = st.text_input("Celular")
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        c_especiales = st.text_area("Condiciones Especiales")
+        
+        c_especiales = st.text_area("Condiciones Especiales (Alergias, Enfermedades)")
+        
+        # SECCIÓN DE CONTACTO DE EMERGENCIA
+        st.subheader("🚨 Contacto de Emergencia")
+        c_nom = st.text_input("Nombre del Contacto")
+        c_tel = st.text_input("Teléfono del Contacto")
+        
         if st.form_submit_button("GUARDAR PACIENTE"):
-            st.success("Paciente guardado.")
+            payload = {
+                "entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": n_doc,
+                "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh,
+                "entry.1892763134": c_nom, "entry.2011749615": c_tel
+            }
+            try:
+                requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
+                st.success(f"✅ Paciente {nombre} registrado correctamente.")
+                st.cache_data.clear()
+            except:
+                st.error("Error al guardar los datos.")
 
 elif st.session_state.menu == "Consulta":
     col_c1, col_c2, col_c3 = st.columns([1, 1, 1])
@@ -85,6 +100,12 @@ elif st.session_state.menu == "Consulta":
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            st.write(f"### Paciente: {p.get('NOMBRE')}")
+            st.write(f"## 👤 Paciente: {p.get('NOMBRE')}")
+            st.write(f"**Documento:** {p.get('DOCUMENTO')} | **Edad:** {p.get('EDAD')} | **RH:** {p.get('RH')}")
+            st.write(f"**EPS:** {p.get('EPS')} | **Celular:** {p.get('CELULAR')}")
+            st.warning(f"⚠️ **Condiciones Especiales:** {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}")
+            
+            # MOSTRAR CONTACTO DE EMERGENCIA EN CONSULTA
+            st.error(f"🚨 **EMERGENCIA:** Llamar a {p.get('NOMBRE CONTACTO EMERGENCIA')} al {p.get('TELEFONO CONTACTO EMERGENCIA')}")
         else:
-            st.error("No encontrado.")
+            st.error("Paciente no encontrado en la base de datos.")
