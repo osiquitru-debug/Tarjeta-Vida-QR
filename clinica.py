@@ -29,7 +29,7 @@ st.markdown("""
         border: 1px solid #cbd5e1; border-left: 5px solid #63b3ed;
         margin-bottom: 10px; color: #2d3748; text-align: left;
     }
-    .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; }
+    .grid-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 0.9em; margin: 10px 0; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -45,17 +45,15 @@ URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJP
 @st.cache_data(ttl=2)
 def cargar_datos():
     try:
-        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
-        h = pd.read_csv(f"{URL_CSV}&sheet=historial")
+        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("")
+        h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("")
         
+        # Normalizar nombres de columnas a MAYÚSCULAS para evitar errores de tipeo
         p.columns = [str(c).strip().upper() for c in p.columns]
         h.columns = [str(c).strip().upper() for c in h.columns]
         
         def identificar_doc(df):
-            for col in ['DOCUMENTO', 'DOCUMENTO_KEY', 'CEDULA', 'ID']:
-                if col in df.columns:
-                    df['DOC_KEY'] = df[col].astype(str).str.split('.').str[0].str.strip()
-                    return df
+            # Limpieza de documento para búsqueda (quita .0 y espacios)
             df['DOC_KEY'] = df.iloc[:, 1].astype(str).str.split('.').str[0].str.strip()
             return df
 
@@ -95,17 +93,22 @@ elif st.session_state.menu == "Registrar":
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         
+        c_nom = st.text_input("Nombre Contacto Emergencia")
+        c_tel = st.text_input("Teléfono Contacto Emergencia")
+        
         if st.form_submit_button("GUARDAR PACIENTE"):
             payload = {
-                "entry.346175428": nombre, "entry.1650757004": t_doc, 
-                "entry.1302424820": doc_id, "entry.1172011247": eps, "entry.162368130": rh
+                "entry.346175428": nombre, "entry.1650757004": t_doc, "entry.1302424820": doc_id,
+                "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh,
+                "entry.1892763134": c_nom, "entry.2011749615": c_tel
             }
             requests.post(URL_FORM_PACIENTES, data=payload)
-            st.success("Registrado."); st.cache_data.clear()
+            st.success("Paciente registrado correctamente."); st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA Y EVOLUCIÓN")
-    busqueda = st.text_input("Documento del Paciente").strip()
+    busqueda_raw = st.text_input("Documento del Paciente").strip()
+    busqueda = busqueda_raw.split('.')[0] # Limpieza rápida del input
     
     if busqueda and df_p is not None:
         p_data = df_p[df_p["DOC_KEY"] == busqueda]
@@ -115,6 +118,7 @@ elif st.session_state.menu == "Consulta":
             <div class="medical-card">
                 <h2 style='text-align:left;'>👤 {p.get('NOMBRE', 'Sin Nombre')}</h2>
                 <p style='text-align:left;'><b>ID:</b> {busqueda} | <b>RH:</b> {p.get('RH')} | <b>EPS:</b> {p.get('EPS')}</p>
+                <div class="emergency-box">🚨 EMERGENCIA: {p.iloc[7]} - {p.iloc[8]}</div>
             </div>""", unsafe_allow_html=True)
             
             with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -134,13 +138,13 @@ elif st.session_state.menu == "Consulta":
                             "entry.889985940": v6, "entry.2016051626": v7, "entry.882053172": v8, "entry.616774918": v9
                         }
                         requests.post(URL_FORM_HISTORIAL, data=h_pay)
-                        st.success("Guardado"); st.cache_data.clear(); st.rerun()
+                        st.success("Evolución guardada correctamente."); st.cache_data.clear(); st.rerun()
 
-            st.subheader("📋 HISTORIAL MÉDICO COMPLETO")
+            st.subheader("📋 HISTORIAL MÉDICO")
             if df_h is not None:
                 h_p = df_h[df_h["DOC_KEY"] == busqueda].sort_index(ascending=False)
                 if not h_p.empty:
-                    # Generar PDF con los 10 campos
+                    # Generación de PDF
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", 'B', 14)
@@ -148,33 +152,32 @@ elif st.session_state.menu == "Consulta":
                     pdf.set_font("Arial", size=9)
                     for _, r in h_p.iterrows():
                         texto = (f"FECHA: {r.get('MARCA TEMPORAL')}\n"
-                                 f"MOTIVO: {r.get('MOTIVO DE LA CONSULTA', 'N/A')}\n"
-                                 f"VALORACION: {r.get('VALORACION', 'N/A')}\n"
-                                 f"SIGNOS: Talla: {r.get('TALLA')} | Peso: {r.get('PESO')} | TA: {r.get('PRESION ARTERIAL')}\n"
-                                 f"ANTECEDENTES: {r.get('ANTECEDENTES')}\n"
+                                 f"VALORACION: {r.get('VALORACION')}\n"
+                                 f"MOTIVO: {r.get('MOTIVO DE LA CONSULTA')}\n"
+                                 f"TALLA: {r.get('TALLA')} | PESO: {r.get('PESO')} | TA: {r.get('PRESION ARTERIAL')}\n"
                                  f"MEDICAMENTOS: {r.get('MEDICAMENTOS')}\n"
                                  f"EPICRISIS: {r.get('EPICRISIS')}\n" + "-"*60)
                         pdf.multi_cell(0, 5, texto)
                     
                     st.download_button("📥 Descargar PDF Completo", pdf.output(dest='S').encode('latin-1'), f"Historial_{busqueda}.pdf", "application/pdf")
 
-                    # Tarjetas de Evolución Mejoradas
+                    # Mapeo de tarjetas de evolución
                     for _, f in h_p.iterrows():
                         st.markdown(f"""
                         <div class="evo-card">
                             <div style="border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px;">
                                 📅 <b>Fecha:</b> {f.get('MARCA TEMPORAL')}
                             </div>
-                            <p><b>1. Valoración:</b> {f.get('VALORACION', 'No registra')}</p>
-                            <p><b>2. Motivo:</b> {f.get('MOTIVO DE LA CONSULTA', 'No registra')}</p>
+                            <p><b>Valoración:</b> {f.get('VALORACION')}</p>
+                            <p><b>Motivo:</b> {f.get('MOTIVO DE LA CONSULTA')}</p>
                             <div class="grid-info">
-                                <span>📏 <b>Talla:</b> {f.get('TALLA', '---')}</span>
-                                <span>⚖️ <b>Peso:</b> {f.get('PESO', '---')}</span>
-                                <span>🩸 <b>Presión:</b> {f.get('PRESION ARTERIAL', '---')}</span>
+                                <span>📏 <b>Talla:</b> {f.get('TALLA')}</span>
+                                <span>⚖️ <b>Peso:</b> {f.get('PESO')}</span>
+                                <span>🩸 <b>Presión:</b> {f.get('PRESION ARTERIAL')}</span>
                             </div>
                             <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-                            <p>💊 <b>Medicamentos:</b> {f.get('MEDICAMENTOS', 'No registra')}</p>
-                            <p>📝 <b>Epicrisis:</b> {f.get('EPICRISIS', 'No registra')}</p>
+                            <p>💊 <b>Medicamentos:</b> {f.get('MEDICAMENTOS')}</p>
+                            <p>📋 <b>Epicrisis:</b> {f.get('EPICRISIS')}</p>
                         </div>""", unsafe_allow_html=True)
-                else: st.info("Sin registros.")
-        else: st.error("Paciente no encontrado.")
+                else: st.info("No hay registros médicos para este paciente.")
+        else: st.error("Paciente no encontrado en la base de datos.")
