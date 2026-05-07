@@ -30,26 +30,24 @@ st.markdown("""
 # --- 2. CARGA DE DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
 
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=1)
 def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("No registra")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("No registra")
         
-        # Limpieza de nombres de columnas (Mayúsculas y sin espacios extras)
         p.columns = [str(c).strip().upper() for c in p.columns]
         h.columns = [str(c).strip().upper() for c in h.columns]
         
-        # Función para limpiar el ID de búsqueda (quita .0 y espacios)
         def limpiar(txt): return str(txt).split('.')[0].replace(" ", "").strip()
         
-        # Mapeo de llaves de búsqueda basado en tus encabezados
+        # Mantenemos la lógica de búsqueda intacta
         p['ID_KEY'] = p['DOCUMENTO'].apply(limpiar)
         h['ID_KEY'] = h['1. DOCUMENTO'].apply(limpiar)
         
         return p, h
     except Exception as e:
-        st.error(f"Error al conectar con las hojas: {e}")
+        st.error(f"Error al cargar base de datos: {e}")
         return None, None
 
 df_p, df_h = cargar_datos()
@@ -60,17 +58,59 @@ if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 with st.sidebar:
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
-    if st.button("🔍 Consulta y Evolución", use_container_width=True): st.session_state.menu = "Consulta"
+    if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
+    if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
 
 # --- 4. VISTAS ---
+
 if st.session_state.menu == "Inicio":
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
+    st.info("Utilice el menú de la izquierda para seleccionar una opción.")
+
+elif st.session_state.menu == "Registrar":
+    st.title("📝 REGISTRO DE NUEVO PACIENTE")
+    with st.form("form_registro_paciente", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nombre = st.text_input("Nombre Completo")
+            tipo_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "CE", "RC"])
+            n_doc = st.text_input("Número de Documento")
+            edad = st.text_input("Edad")
+        with col2:
+            celular = st.text_input("Celular")
+            eps = st.text_input("EPS")
+            rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        
+        c_especiales = st.text_area("Condiciones Especiales (Alergias, Enfermedades de base)")
+        
+        st.subheader("Contacto de Emergencia")
+        c_nom = st.text_input("Nombre Contacto Emergencia")
+        c_tel = st.text_input("Teléfono Contacto Emergencia")
+        
+        if st.form_submit_button("GUARDAR PACIENTE"):
+            # Aquí van los IDs de tu Google Form de Pacientes
+            payload = {
+                "entry.346175428": nombre, 
+                "entry.1650757004": tipo_doc, 
+                "entry.1302424820": n_doc,
+                "entry.1801154005": edad,
+                "entry.1172011247": eps,
+                "entry.162368130": rh,
+                "entry.1892763134": c_nom,
+                "entry.2011749615": c_tel,
+                # Agregue aquí los entry IDs de Celular y Condiciones si los tiene
+            }
+            try:
+                requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
+                st.success(f"✅ Paciente {nombre} registrado correctamente."); st.cache_data.clear()
+            except:
+                st.error("Error al enviar los datos.")
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA MÉDICA")
-    busqueda_raw = st.text_input("Ingrese el Documento del Paciente")
+    busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
 
     if id_buscado and df_p is not None:
@@ -78,7 +118,7 @@ elif st.session_state.menu == "Consulta":
         
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA DEL PACIENTE (USANDO TUS ENCABEZADOS DE HOJA PACIENTES)
+            # TARJETA DEL PACIENTE
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
@@ -102,14 +142,18 @@ elif st.session_state.menu == "Consulta":
                         v8 = st.text_area("8. Medicamentos"); v10 = st.text_area("10. Epicrisis")
                     
                     if st.form_submit_button("GUARDAR REGISTRO"):
-                        # Aquí enviarías los datos a tu Google Form de Historial
-                        st.success("Información enviada al historial."); st.cache_data.clear()
+                        e_payload = {
+                            "entry.2019369477": id_buscado, "entry.1088523869": v2, "entry.611862537": v3,
+                            "entry.1275746503": v4, "entry.949747647": v5, "entry.2091389798": v6,
+                            "entry.889985940": v7, "entry.2016051626": v8, "entry.616774918": v10
+                        }
+                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
+                        st.success("Información enviada al historial."); st.cache_data.clear(); st.rerun()
 
-            # LISTADO DE EVOLUCIONES (USANDO TUS ENCABEZADOS DE HOJA HISTORIAL)
+            # HISTORIAL (LÓGICA PROTEGIDA)
             st.subheader("📋 HISTORIAL DE EVOLUCIONES")
             if df_h is not None:
                 h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-                
                 if not h_p.empty:
                     for _, f in h_p.iterrows():
                         st.markdown(f"""
@@ -128,6 +172,6 @@ elif st.session_state.menu == "Consulta":
                             <p>📝 <b>EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
                         </div>""", unsafe_allow_html=True)
                 else:
-                    st.info("No hay evoluciones registradas para este paciente.")
+                    st.info("No hay evoluciones registradas.")
         else:
-            st.error(f"No se encontró ningún paciente con el documento: {id_buscado}")
+            st.error(f"No se encontró el documento: {id_buscado}")
