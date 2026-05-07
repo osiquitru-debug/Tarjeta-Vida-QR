@@ -3,25 +3,31 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN VISUAL (TEXTO NEGRO Y CAJAS BLANCAS) ---
+# --- 1. CONFIGURACIÓN VISUAL (FONDO MENTA Y MENÚ PALO DE ROSA) ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 
 st.markdown(f"""
     <style>
-    /* Fondo general pastel suave */
+    /* Fondo general de la app (Menta pastel) */
     .stApp {{ 
         background-color: #f0f7f4 !important; 
         color: #000000 !important;
     }}
     
-    /* Forzar que todos los textos de Streamlit sean negros */
-    h1, h2, h3, p, span, label, .stMarkdown {{
+    /* SECCIÓN DEL MENÚ (Barra lateral) - Color Palo de Rosa */
+    [data-testid="stSidebar"] {{
+        background-color: #E5B1B1 !important;
+        border-right: 1px solid #d4a5a5;
+    }}
+    
+    /* Forzar textos negros en toda la app incluyendo el menú */
+    h1, h2, h3, p, span, label, .stMarkdown, [data-testid="stSidebar"] .stMarkdown {{
         color: #000000 !important;
     }}
 
-    /* CAJAS DE DATOS BLANCAS (Inputs, Selectbox, Textarea) */
+    /* CAJAS DE DATOS BLANCAS */
     .stTextInput>div>div>input, 
     .stSelectbox>div>div>div, 
     .stTextArea>div>div>textarea {{
@@ -37,7 +43,7 @@ st.markdown(f"""
         border-radius: 20px;
         border-left: 12px solid #a2d2ff; 
         box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-        margin-bottom: 20px; 
+        margin-bottom: 20px;
         color: #000000 !important;
     }}
     
@@ -49,7 +55,6 @@ st.markdown(f"""
         border: 2px dashed #ffcad4; 
         color: #d64545 !important; 
         font-weight: bold; 
-        margin-top: 10px;
     }}
 
     /* Tarjetas de Evolución */
@@ -59,25 +64,14 @@ st.markdown(f"""
         border-radius: 15px;
         border: 1px solid #d8e2dc; 
         border-left: 8px solid #b7e4c7; 
-        margin-bottom: 12px; 
+        margin-bottom: 12px;
         color: #000000 !important;
     }}
 
-    .grid-medidas {{ 
-        display: grid; 
-        grid-template-columns: 1fr 1fr 1fr; 
-        gap: 10px; 
-        margin: 10px 0; 
-        background-color: #f9fbf9;
-        padding: 8px;
-        border-radius: 8px;
-        color: #000000 !important;
-    }}
-
-    /* Botón Cian del logo */
+    /* Botones estilo Vida QR */
     div.stButton > button {{
         background-color: #84dcc6 !important;
-        color: #000000 !important; /* Texto del botón también negro para consistencia */
+        color: #000000 !important;
         border: none !important;
         border-radius: 10px !important;
         font-weight: bold !important;
@@ -110,7 +104,7 @@ if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    st.markdown("<h2 style='text-align: center;'>GESTIÓN</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>MENÚ DE GESTIÓN</h2>", unsafe_allow_html=True)
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
@@ -121,7 +115,7 @@ if st.session_state.menu == "Inicio":
     st.image(LOGO_URL, width=280)
     st.title("🩺 TARJETA VIDA")
     st.markdown("### *Cuidado Integral con Tecnología QR*")
-    st.write("Plataforma médica optimizada para la comunidad de Guadalupe, Huila.")
+    st.write("Bienvenido al sistema de gestión de Guadalupe, Huila.")
 
 elif st.session_state.menu == "Registrar":
     st.image(LOGO_URL, width=120)
@@ -137,12 +131,12 @@ elif st.session_state.menu == "Registrar":
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         
-        c_esp = st.text_area("Condiciones Especiales (Alergias, etc.)")
+        c_esp = st.text_area("Condiciones Especiales (Alergias, preexistencias, etc.)")
         st.subheader("🚨 Contacto de Emergencia")
         c_nom = st.text_input("Nombre de Referencia")
         c_tel = st.text_input("Teléfono de Referencia")
         
-        if st.form_submit_button("FINALIZAR REGISTRO"):
+        if st.form_submit_button("GUARDAR EN BASE DE DATOS"):
             payload = {
                 "entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": n_doc,
                 "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh,
@@ -150,13 +144,14 @@ elif st.session_state.menu == "Registrar":
             }
             try:
                 requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-                st.success("✅ Paciente registrado."); st.cache_data.clear()
-            except: st.error("Error de conexión.")
+                st.success("✅ Paciente registrado con éxito.")
+                st.cache_data.clear()
+            except: st.error("Error al sincronizar.")
 
 elif st.session_state.menu == "Consulta":
     st.image(LOGO_URL, width=120)
-    st.title("🔍 PERFIL DEL PACIENTE")
-    id_buscado_raw = st.text_input("Documento del Paciente").strip()
+    st.title("🔍 PERFIL Y EVOLUCIONES")
+    id_buscado_raw = st.text_input("Ingrese Documento del Paciente").strip()
     id_buscado = id_buscado_raw.split('.')[0].replace(" ", "").strip()
 
     if id_buscado and df_p is not None:
@@ -169,20 +164,19 @@ elif st.session_state.menu == "Consulta":
                 <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO')} | <b>RH:</b> {p.get('RH')} | <b>EDAD:</b> {p.get('EDAD')} años</p>
                 <p><b>EPS:</b> {p.get('EPS')}</p>
                 <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
-                <div class="emergency-box">🚨 EN EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
+                <div class="emergency-box">🚨 LLAMAR EN EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             
-            # Botón PDF
+            # Exportar PDF
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(200, 10, f"HISTORIA CLINICA - {p.get('NOMBRE')}", ln=True, align='C')
-            st.download_button(label="📥 Exportar HC a PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf")
+            st.download_button(label="📥 Descargar HC (PDF)", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf")
 
-            # REGISTRO DE NUEVA EVOLUCIÓN
-            with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN MÉDICA"):
+            with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
                 with st.form("f_evo", clear_on_submit=True):
                     col_e1, col_e2 = st.columns(2)
                     with col_e1:
@@ -192,17 +186,17 @@ elif st.session_state.menu == "Consulta":
                     with col_e2:
                         v_pes = st.text_input("Peso (kg)")
                         v_pre = st.text_input("Tensión Arterial")
-                        v_med = st.text_area("Tratamiento")
+                        v_med = st.text_area("Fórmula Médica")
                         v_epi = st.text_area("Notas / Epicrisis")
                     
-                    if st.form_submit_button("GUARDAR EN HISTORIAL"):
+                    if st.form_submit_button("GUARDAR REGISTRO"):
                         e_payload = {
                             "entry.2019369477": id_buscado, "entry.1088523869": v_val, "entry.611862537": v_mot,
                             "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre,
                             "entry.2016051626": v_med, "entry.616774918": v_epi
                         }
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
-                        st.success("Sincronizado."); st.cache_data.clear(); st.rerun()
+                        st.success("Guardado."); st.cache_data.clear(); st.rerun()
 
             st.subheader("📋 Evoluciones Recientes")
             if not h_p.empty:
@@ -214,7 +208,9 @@ elif st.session_state.menu == "Consulta":
                         <div class="grid-medidas">
                             <span>📏 Talla: {f.get('4. TALLA')}</span>
                             <span>⚖️ Peso: {f.get('5. PESO')}</span>
-                            <span>🩸 P.A.: {f.get('6. PRESIÓN ARTERIAL')}</span>
+                            <span>🩸 Tensión: {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p>💊 <b>Plan:</b> {f.get('8. MEDICAMENTOS')}</p>
+                        <p>💊 <b>Tratamiento:</b> {f.get('8. MEDICAMENTOS')}</p>
                     </div>""", unsafe_allow_html=True)
+            else: st.info("No se registran evoluciones previas.")
+        else: st.error("No se encontró el paciente.")
