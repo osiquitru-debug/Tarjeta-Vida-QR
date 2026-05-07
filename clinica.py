@@ -19,11 +19,18 @@ st.markdown("""
         border: 1px dashed #f56565; color: #c53030; font-weight: bold; margin-top: 10px;
     }
     .evo-card {
-        background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border: 1px solid #cbd5e1; border-left: 5px solid #63b3ed;
-        margin-bottom: 10px; color: #2d3748; text-align: left;
+        background-color: #ffffff; padding: 20px; border-radius: 12px;
+        border: 1px solid #cbd5e1; border-top: 5px solid #63b3ed;
+        margin-bottom: 15px; color: #2d3748; text-align: left;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-    .grid-medidas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }
+    .section-header { color: #2b6cb0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; margin-top: 10px; margin-bottom: 2px; }
+    .grid-medidas { 
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; 
+        background: #f8fafc; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; 
+    }
+    .med-box { background:#f0fff4; padding:8px; border-radius:8px; border:1px solid #c6f6d5; color:#22543d; font-weight: 500; }
+    .alerta-pa { color: #e53e3e; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -60,6 +67,8 @@ with st.sidebar:
 
 if st.session_state.menu == "Inicio":
     st.title("🩺 TARJETA VIDA")
+    # INSERTAR LOGO
+    st.image("image_097a5d.png", width=250)
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
 
@@ -105,36 +114,17 @@ elif st.session_state.menu == "Consulta":
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
                 <p style='margin:5px 0;'><b>{p.get('TIPO DE DOCUMENTO')}:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')}</p>
                 <p><b>EPS:</b> {p.get('EPS')} | <b>RH:</b> {p.get('RH')}</p>
-                <p><b>⚠️ CONDICIONES:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
+                <p style='color:#e53e3e;'><b>⚠️ CONDICIONES:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
                 <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- BOTÓN DE PDF ---
             if not h_p.empty:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", 'B', 16)
                 pdf.cell(0, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
-                pdf.ln(5)
-                pdf.set_font("Arial", 'B', 12)
-                pdf.cell(0, 10, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
-                pdf.set_font("Arial", size=10)
-                pdf.cell(0, 10, f"EPS: {p.get('EPS')} | RH: {p.get('RH')} | Edad: {p.get('EDAD')}", ln=True)
-                pdf.ln(5)
-                pdf.cell(0, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                
-                for _, f in h_p.iterrows():
-                    pdf.set_font("Arial", 'B', 10)
-                    pdf.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", ln=True)
-                    pdf.set_font("Arial", size=9)
-                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nMEDIDAS: Talla {f.get('4. TALLA')} | Peso {f.get('5. PESO')} | TA {f.get('6. PRESIÓN ARTERIAL')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
-                    pdf.ln(3)
-                    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-                    pdf.ln(2)
-
                 st.download_button(label="📥 Descargar Historial PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf", mime="application/pdf")
 
             with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -158,17 +148,32 @@ elif st.session_state.menu == "Consulta":
             st.subheader("📋 HISTORIAL DE EVOLUCIONES")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
+                    pa = str(f.get('6. PRESIÓN ARTERIAL'))
+                    clase_pa = "alerta-pa" if "/" in pa and int(pa.split('/')[-1]) >= 140 else ""
+                    
                     st.markdown(f"""
                     <div class="evo-card">
-                        <small>📅 <b>FECHA:</b> {f.get('MARCA TEMPORAL')}</small><br>
-                        <b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}<br>
-                        <b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}<br>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px;">
+                            <span style="font-size:0.8em; color:#666;">📅 {f.get('MARCA TEMPORAL')}</span>
+                            <span style="font-size:0.8em; font-weight:bold; color:#63b3ed;">REGISTRO MÉDICO</span>
+                        </div>
+                        <div class="section-header">🩺 Motivo de Consulta</div>
+                        <div style="margin-bottom:8px;">{f.get('3. MOTIVO DE LA CONSULTA')}</div>
+                        
+                        <div class="section-header">🧠 Valoración y Hallazgos</div>
+                        <div style="margin-bottom:8px;">{f.get('2. VALORACIÓN')}</div>
+
                         <div class="grid-medidas">
                             <span>📏 <b>Talla:</b> {f.get('4. TALLA')}</span>
                             <span>⚖️ <b>Peso:</b> {f.get('5. PESO')}</span>
-                            <span>🩸 <b>P.A.:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
+                            <span class="{clase_pa}">🩸 <b>P.A.:</b> {pa}</span>
                         </div>
-                        <p>💊 <b>MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
+                        
+                        <div class="section-header">💊 Tratamiento</div>
+                        <div class="med-box">{f.get('8. MEDICAMENTOS')}</div>
+                        
+                        <div class="section-header">📝 Epicrisis / Plan</div>
+                        <div style="font-style:italic; background:#fffaf0; padding:8px; border-radius:5px; border-left:3px solid #ed8936;">{f.get('10. EPICRISIS')}</div>
                     </div>""", unsafe_allow_html=True)
             else: st.info("Sin evoluciones.")
         else: st.error(f"No se encontró el documento: {id_buscado}")
