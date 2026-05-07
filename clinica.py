@@ -5,10 +5,10 @@ import unicodedata
 from fpdf import FPDF
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
+# --- 1. CONFIGURACIÓN E INTERFAZ ---
+st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# --- 2. ESTÉTICA DE ALTO CONTRASTE (VERDE, MORADO, TURQUESA) ---
+# Estética de alto contraste: Verde Menta, Morado y Turquesa
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -41,139 +41,161 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. FUNCIONES TÉCNICAS (LIMPIEZA EXTREMA) ---
-def limpiar_id(texto):
-    """Convierte cualquier ID (123, 123.0, ' 123 ') en una cadena limpia '123'."""
-    if pd.isna(texto): return ""
-    txt = str(texto).strip()
-    if txt.endswith('.0'): txt = txt[:-2]
-    return txt
+# --- 2. FUNCIONES DE LIMPIEZA Y PROCESAMIENTO ---
+def limpiar_id(valor):
+    if pd.isna(valor): return ""
+    v = str(valor).strip()
+    if v.endswith('.0'): v = v[:-2]
+    return v
 
-def normalizar(texto):
+def normalizar_col(texto):
     return ''.join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn').upper().strip()
 
-def obtener_dato(fila, palabras_clave):
+def obtener_valor(fila, keywords):
     for col in fila.index:
-        if any(p in normalizar(col) for p in palabras_clave):
+        if any(k in normalizar_col(col) for k in keywords):
             return str(fila[col])
     return "N/R"
 
-def generar_pdf(paciente, evoluciones, documento):
+def generar_pdf(paciente, evoluciones, doc_id):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="HISTORIAL CLÍNICO - TARJETA VIDA", ln=True, align='C')
+    pdf.cell(200, 10, txt="REPORTE CLÍNICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(10)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt=f"PACIENTE: {obtener_dato(paciente, ['NOM'])}", ln=True)
-    pdf.cell(200, 10, txt=f"DOCUMENTO: {documento}", ln=True)
+    pdf.cell(200, 10, txt=f"PACIENTE: {obtener_valor(paciente, ['NOM'])}", ln=True)
+    pdf.cell(200, 10, txt=f"DOCUMENTO: {doc_id}", ln=True)
     pdf.ln(10)
-    pdf.set_font("Arial", 'B', 13)
-    pdf.cell(200, 10, txt="REGISTROS DE EVOLUCIÓN", ln=True)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True)
     pdf.set_font("Arial", '', 10)
-    for _, evo in evoluciones.iterrows():
+    for _, f in evoluciones.iterrows():
         pdf.ln(5)
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(200, 7, txt=f"FECHA: {obtener_dato(evo, ['MARCA', 'FECHA'])}", ln=True)
+        pdf.cell(200, 7, txt=f"FECHA: {obtener_valor(f, ['MARCA', 'FECHA'])}", ln=True)
         pdf.set_font("Arial", '', 10)
-        msg = f"MOTIVO: {obtener_dato(evo, ['MOTIVO'])}\nVALORACION: {obtener_dato(evo, ['VALORAC'])}\nEPICRISIS: {obtener_dato(evo, ['EPICRIS'])}"
-        pdf.multi_cell(0, 7, txt=msg)
+        texto = f"MOTIVO: {obtener_valor(f, ['MOTIVO'])}\nVALORACION: {obtener_valor(f, ['VALORAC'])}\nEPICRISIS: {obtener_valor(f, ['EPICRIS'])}"
+        pdf.multi_cell(0, 7, txt=texto)
         pdf.cell(0, 0, "", "T")
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
+# --- 3. CARGA DE DATOS ---
 @st.cache_data(ttl=1)
-def cargar_datos():
+def cargar_todo():
     try:
-        url_base = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
-        p = pd.read_csv(f"{url_base}&sheet=pacientes")
-        h = pd.read_csv(f"{url_base}&sheet=historial")
-        
-        # Aplicamos la limpieza extrema a la columna de documento
+        base = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
+        p = pd.read_csv(f"{base}&sheet=pacientes")
+        h = pd.read_csv(f"{base}&sheet=historial")
         for df in [p, h]:
-            c_doc = next((c for c in df.columns if "DOC" in normalizar(c)), None)
-            if c_doc:
-                df[c_doc] = df[c_doc].apply(limpiar_id)
+            col_id = next((c for c in df.columns if "DOC" in normalizar_col(c)), None)
+            if col_id: df[col_id] = df[col_id].apply(limpiar_id)
         return p, h
-    except Exception as e:
-        st.error(f"Error cargando Sheets: {e}")
-        return None, None
+    except: return None, None
 
-df_p, df_h = cargar_datos()
+df_p, df_h = cargar_todo()
 
 # --- 4. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Consulta"
 
 with st.sidebar:
-    st.markdown("<h1 style='text-align:center;'>🩺</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>🩺 MENÚ</h2>", unsafe_allow_html=True)
     if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
-# --- 5. SECCIÓN CONSULTA (MOTOR CORREGIDO) ---
-if st.session_state.menu == "Consulta":
-    st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
+# --- 5. SECCIÓN: REGISTRAR PACIENTE (AQUÍ ESTÁ LA PARTE QUE FALTABA) ---
+if st.session_state.menu == "Registrar":
+    st.markdown("<h1 style='text-align: center;'>📝 Registro de Nuevo Paciente</h1>", unsafe_allow_html=True)
+    with st.form("form_registro_paciente", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            r_nombre = st.text_input("Nombre Completo")
+            r_tipo_doc = st.selectbox("Tipo de Documento", ["Cédula", "T.I.", "C.E.", "Pasaporte"])
+            r_documento = st.text_input("Número de Documento")
+        with col2:
+            r_celular = st.text_input("Celular")
+            r_rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+            r_eps = st.text_input("EPS")
+        
+        st.markdown("### 🚨 Contacto de Emergencia")
+        r_e_nombre = st.text_input("Nombre del contacto de emergencia")
+        r_e_tel = st.text_input("Teléfono del contacto")
+
+        if st.form_submit_button("GUARDAR PACIENTE"):
+            if r_documento and r_nombre:
+                payload_p = {
+                    "entry.346175428": r_nombre,
+                    "entry.1650757004": r_tipo_doc,
+                    "entry.1302424820": r_documento.strip(),
+                    "entry.1043165037": r_celular,
+                    "entry.1172011247": r_eps,
+                    "entry.162368130": r_rh,
+                    "entry.1892763134": r_e_nombre,
+                    "entry.2011749615": r_e_tel
+                }
+                requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload_p)
+                st.success(f"✅ Paciente {r_nombre} registrado con éxito.")
+                st.cache_data.clear()
+            else:
+                st.warning("⚠️ Por favor complete Nombre y Documento.")
+
+# --- 6. SECCIÓN: CONSULTA E HISTORIAL ---
+elif st.session_state.menu == "Consulta":
+    st.markdown("<h1 style='text-align: center;'>🔍 Consulta Médica</h1>", unsafe_allow_html=True)
     busq = limpiar_id(st.text_input("Ingrese Documento del Paciente"))
     
     if busq and df_p is not None:
-        c_doc_p = next((c for c in df_p.columns if "DOC" in normalizar(c)), "DOCUMENTO")
-        # Búsqueda sobre columna ya limpia
-        pac = df_p[df_p[c_doc_p] == busq]
+        col_doc_p = next((c for c in df_p.columns if "DOC" in normalizar_col(c)), "DOCUMENTO")
+        paciente_row = df_p[df_p[col_doc_p] == busq]
         
-        if not pac.empty:
-            p = pac.iloc[0]
-            c_doc_h = next((c for c in df_h.columns if "DOC" in normalizar(c)), "DOCUMENTO")
-            h_p = df_h[df_h[c_doc_h] == busq] if df_h is not None else pd.DataFrame()
+        if not paciente_row.empty:
+            p = paciente_row.iloc[0]
+            col_doc_h = next((c for c in df_h.columns if "DOC" in normalizar_col(c)), "DOCUMENTO")
+            h_p = df_h[df_h[col_doc_h] == busq] if df_h is not None else pd.DataFrame()
 
-            # Tarjeta Paciente
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0;'>👤 {obtener_dato(p, ["NOM"])}</h2>
-                <p><b>DOCUMENTO:</b> {busq} | <b>RH:</b> {obtener_dato(p, ["RH"])} | <b>EPS:</b> {obtener_dato(p, ["EPS"])}</p>
+                <h2 style='margin:0;'>👤 {obtener_valor(p, ["NOM"])}</h2>
+                <p><b>ID:</b> {busq} | <b>RH:</b> {obtener_valor(p, ["RH"])} | <b>EPS:</b> {obtener_valor(p, ["EPS"])}</p>
             </div>
             """, unsafe_allow_html=True)
 
-            # Botón Descarga PDF
             if not h_p.empty:
-                pdf_data = generar_pdf(p, h_p, busq)
-                st.download_button("📥 DESCARGAR HISTORIAL (PDF)", data=pdf_data, file_name=f"Historial_{busq}.pdf", mime="application/pdf")
+                pdf_bytes = generar_pdf(p, h_p, busq)
+                st.download_button("📥 DESCARGAR HISTORIAL PDF", data=pdf_bytes, file_name=f"Historial_{busq}.pdf", mime="application/pdf")
 
-            # Formulario Evolución (Orden del Link)
             with st.expander("✍️ AGREGAR EVOLUCIÓN"):
-                with st.form("evo_form", clear_on_submit=True):
-                    f1 = st.text_input("1. Motivo de la Consulta")
+                with st.form("f_evo", clear_on_submit=True):
+                    f1 = st.text_input("1. Motivo de Consulta")
                     f2 = st.text_area("2. Valoración")
                     c1, c2, c3 = st.columns(3)
-                    f3 = c1.text_input("3. Talla")
-                    f4 = c2.text_input("4. Peso")
-                    f5 = c3.text_input("5. TA")
-                    f6 = st.text_area("6. Antecedentes")
-                    f7 = st.text_area("7. Medicamentos")
-                    f8 = st.text_area("8. Laboratorios")
-                    f9 = st.text_area("9. Epicrisis")
+                    f3, f4, f5 = c1.text_input("3. Talla"), c2.text_input("4. Peso"), c3.text_input("5. TA")
+                    f6, f7, f8, f9 = st.text_area("6. Antecedentes"), st.text_area("7. Medicamentos"), st.text_area("8. Laboratorios"), st.text_area("9. Epicrisis")
                     if st.form_submit_button("GUARDAR REGISTRO"):
-                        payload = {
+                        payload_h = {
                             "entry.2019369477": busq, "entry.611862537": f1, "entry.1275746503": f2,
                             "entry.949747647": f3, "entry.2091389798": f4, "entry.889985940": f6,
                             "entry.2016051626": f7, "entry.882053172": f5, "entry.1088523869": f8, "entry.616774918": f9
                         }
-                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=payload)
-                        st.success("✅ Guardado correctamente."); st.cache_data.clear(); st.rerun()
+                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=payload_h)
+                        st.success("✅ Evolución guardada."); st.cache_data.clear(); st.rerun()
 
-            # Tarjetas de historial
             for _, f in h_p.iloc[::-1].iterrows():
                 st.markdown(f"""
                 <div class="evolution-card">
-                    <p style="color:#2b6cb0; font-size:12px;">📅 {obtener_dato(f, ["MARCA", "FECHA"])}</p>
-                    <p><b>🩺 MOTIVO:</b> {obtener_dato(f, ["MOTIVO"])}</p>
-                    <p><b>📋 VALORACIÓN:</b> {obtener_dato(f, ["VALORAC"])}</p>
-                    <p><b>📝 EPICRISIS:</b> {obtener_dato(f, ["EPICRIS"])}</p>
+                    <p style="color:#2b6cb0; font-size:12px;">📅 {obtener_valor(f, ["MARCA", "FECHA"])}</p>
+                    <p><b>🩺 MOTIVO:</b> {obtener_valor(f, ["MOTIVO"])}</p>
+                    <p><b>📋 VALORACIÓN:</b> {obtener_valor(f, ["VALORAC"])}</p>
+                    <p><b>📝 EPICRISIS:</b> {obtener_valor(f, ["EPICRIS"])}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.error(f"❌ El documento '{busq}' no existe en la base de datos de pacientes.")
+            st.error(f"❌ El documento '{busq}' no existe en la base de datos.")
 
-# --- 6. SECCIÓN BASE DE DATOS ---
+# --- 7. SECCIÓN: BASE DE DATOS ---
 elif st.session_state.menu == "Base":
-    st.markdown("### 📊 Datos en Tiempo Real")
-    if df_p is not None: st.write("**Pacientes registrados:**", df_p)
-    if df_h is not None: st.write("**Historial de evoluciones:**", df_h)
+    st.markdown("### 📊 Datos Registrados")
+    st.write("**Pacientes en Sistema:**", df_p)
+    st.write("**Historial de Evoluciones:**", df_h)
+    
