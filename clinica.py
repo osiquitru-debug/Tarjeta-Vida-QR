@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN Y ESTILO (ESTÉTICA BASE ORIGINAL) ---
+# --- 1. CONFIGURACIÓN Y ESTILO ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
 st.markdown("""
@@ -27,15 +27,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. RECURSOS Y URLs ---
+# --- 2. RECURSOS Y CARGA ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
-
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 3. FUNCIONES ---
 @st.cache_data(ttl=2)
 def cargar_datos():
     try:
@@ -47,38 +45,11 @@ def cargar_datos():
             if 'DOCUMENTO' in df.columns:
                 df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.split('.').str[0].str.strip()
         return p, h
-    except:
-        return None, None
-
-def generar_pdf(paciente, historial):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "HISTORIAL CLÍNICO - TARJETA VIDA", ln=True, align='C')
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, f"Paciente: {paciente.get('NOMBRE', 'N/A')}", ln=True)
-    pdf.set_font("Arial", '', 10)
-    pdf.cell(0, 8, f"Documento: {paciente.get('DOCUMENTO', 'N/A')} | RH: {paciente.get('RH', 'N/A')} | EPS: {paciente.get('EPS', 'N/A')}", ln=True)
-    pdf.ln(5)
-    for _, fila in historial.iterrows():
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(0, 8, f"Fecha: {fila.get('MARCA TEMPORAL', 'S/F')}", ln=True, fill=True)
-        pdf.set_font("Arial", '', 9)
-        texto_hist = (f"Motivo: {fila.get('MOTIVO DE LA CONSULTA')}\n"
-                      f"Valoración: {fila.get('VALORACION')}\n"
-                      f"Talla: {fila.get('TALLA')} | Peso: {fila.get('PESO')} | PA: {fila.get('PRESION ARTERIAL')}\n"
-                      f"Antecedentes: {fila.get('ANTECEDENTES MEDICOS')}\n"
-                      f"Medicamentos: {fila.get('MEDICAMENTOS')}\n"
-                      f"Laboratorios: {fila.get('LABORATORIOS - PROCEDIMIENTOS')}\n"
-                      f"Epicrisis: {fila.get('EPICRISIS')}")
-        pdf.multi_cell(0, 5, texto_hist)
-        pdf.ln(3)
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    except: return None, None
 
 df_p, df_h = cargar_datos()
 
-# --- 4. NAVEGACIÓN (TRES BOTONES ORIGINALES) ---
+# --- 3. NAVEGACIÓN (3 BOTONES) ---
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 with st.sidebar:
     st.image(URL_LOGO, width=150)
@@ -87,37 +58,45 @@ with st.sidebar:
     if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta / Evolución"): st.session_state.menu = "Consulta"
 
-# --- 5. VISTAS ---
+# --- 4. VISTAS ---
 if st.session_state.menu == "Inicio":
     st.title("🩺 Bienvenido a Tarjeta Vida")
-    st.info("Sistema de gestión de historiales médicos y evolución de pacientes.")
+    st.info("Seleccione una opción en el menú lateral.")
 
 elif st.session_state.menu == "Registrar":
     st.title("📝 Registro de Paciente")
     with st.form("form_registro", clear_on_submit=True):
+        st.subheader("Datos Personales")
         col1, col2 = st.columns(2)
         with col1:
             nombre = st.text_input("Nombre Completo")
-            cedula = st.text_input("Documento de Identidad")
-            edad = st.text_input("Edad")
-            cel = st.text_input("Celular")
+            t_doc = st.selectbox("Tipo de Documento", ["Cédula de Ciudadanía", "Tarjeta de Identidad", "Cédula de Extranjería", "Registro Civil"])
+            cedula = st.text_input("Número de Documento")
         with col2:
+            edad = st.text_input("Edad")
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-            e_nom = st.text_input("Nombre contacto emergencia")
-            e_tel = st.text_input("Teléfono contacto emergencia")
+        
+        cel = st.text_input("Celular de contacto")
         condiciones = st.text_area("Condiciones especiales (Alergias, Enfermedades de base)")
+        
+        st.subheader("Contacto de Emergencia")
+        ce_col1, ce_col2 = st.columns(2)
+        with ce_col1:
+            e_nom = st.text_input("Nombre contacto emergencia")
+        with ce_col2:
+            e_tel = st.text_input("Teléfono contacto emergencia")
         
         if st.form_submit_button("GUARDAR PACIENTE"):
             payload_p = {
-                "entry.346175428": nombre, "entry.1650757004": "App",
+                "entry.346175428": nombre, "entry.1650757004": t_doc,
                 "entry.1302424820": cedula, "entry.1801154005": edad,
                 "entry.1043165037": cel, "entry.1172011247": eps,
                 "entry.162368130": rh, "entry.346363": condiciones,
                 "entry.1892763134": e_nom, "entry.2011749615": e_tel
             }
             requests.post(URL_FORM_PACIENTES, data=payload_p)
-            st.success("Paciente registrado correctamente.")
+            st.success("Registrado.")
             st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
@@ -130,13 +109,13 @@ elif st.session_state.menu == "Consulta":
             p = paciente.iloc[0]
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
-                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH')} | <b>EPS:</b> {p.get('EPS')}</p>
-                <div class="emergency-box">🚨 {p.get('NOMBRE CONTACTO EMERGENCIA', 'S/D')}: {p.get('TELEFONO CONTACTO EMERGENCIA', 'S/D')}</div>
+                <h2>👤 {p.get('NOMBRE')}</h2>
+                <p>ID: {id_bus} | RH: {p.get('RH')} | EPS: {p.get('EPS')}</p>
+                <div class="emergency-box">🚨 Emergencia: {p.get('NOMBRE CONTACTO EMERGENCIA')} - {p.get('TELEFONO CONTACTO EMERGENCIA')}</div>
             </div>
             """, unsafe_allow_html=True)
             
-            with st.expander("✍️ REGISTRAR EVOLUCIÓN (10 CAMPOS)"):
+            with st.expander("✍️ REGISTRAR EVOLUCIÓN"):
                 with st.form("evo_form", clear_on_submit=True):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -150,26 +129,22 @@ elif st.session_state.menu == "Consulta":
                         v7 = st.text_area("Medicamentos")
                         v8 = st.text_area("Laboratorios - Procedimientos")
                         v9 = st.text_area("Epicrisis")
-                    
-                    if st.form_submit_button("GUARDAR EN HISTORIAL"):
+                    if st.form_submit_button("GUARDAR"):
                         requests.post(URL_FORM_HISTORIAL, data={
-                            "entry.2019369477": id_bus, "entry.889985940": v1,
-                            "entry.611862537": v2, "entry.616774918": v3,
-                            "entry.2091389798": v4, "entry.949747647": v5,
-                            "entry.882053172": v6, "entry.2016051626": v7,
-                            "entry.1088523869": v8, "entry.1275746503": v9
+                            "entry.2019369477": id_bus, "entry.889985940": v1, "entry.611862537": v2, 
+                            "entry.616774918": v3, "entry.2091389798": v4, "entry.949747647": v5,
+                            "entry.882053172": v6, "entry.2016051626": v7, "entry.1088523869": v8, "entry.1275746503": v9
                         })
                         st.rerun()
 
+            # Muestra del historial respetando campos solicitados
             h_p = df_h[df_h["DOCUMENTO"] == id_bus] if df_h is not None else pd.DataFrame()
             if not h_p.empty:
-                st.download_button("📥 Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Historial_{id_bus}.pdf", mime="application/pdf")
                 for _, f in h_p.sort_index(ascending=False).iterrows():
                     st.markdown(f"""
                     <div class="evo-card">
                         <small>📅 {f.get('MARCA TEMPORAL')}</small><br>
-                        <b>Valoración:</b> {f.get('VALORACION')}<br>
                         <b>Motivo:</b> {f.get('MOTIVO DE LA CONSULTA')}<br>
-                        <b>Medicamentos:</b> {f.get('MEDICAMENTOS')}
-                    </div>
-                    """, unsafe_allow_html=True)
+                        <b>Valoración:</b> {f.get('VALORACION')}<br>
+                        <b>Signos:</b> T: {f.get('TALLA')} | P: {f.get('PESO')} | PA: {f.get('PRESION ARTERIAL')}
+                    </div>""", unsafe_allow_html=True)
