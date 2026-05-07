@@ -24,7 +24,6 @@ st.markdown("""
         margin-bottom: 10px; color: #2d3748; text-align: left;
     }
     .grid-medidas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }
-    .section-header { color: #2b6cb0; font-weight: bold; font-size: 0.85em; text-transform: uppercase; margin-top: 8px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -112,11 +111,30 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
+            # --- BOTÓN DE PDF ---
             if not h_p.empty:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", 'B', 16)
                 pdf.cell(0, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
+                pdf.ln(5)
+                pdf.set_font("Arial", 'B', 12)
+                pdf.cell(0, 10, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
+                pdf.set_font("Arial", size=10)
+                pdf.cell(0, 10, f"EPS: {p.get('EPS')} | RH: {p.get('RH')} | Edad: {p.get('EDAD')}", ln=True)
+                pdf.ln(5)
+                pdf.cell(0, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
+                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                
+                for _, f in h_p.iterrows():
+                    pdf.set_font("Arial", 'B', 10)
+                    pdf.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", ln=True)
+                    pdf.set_font("Arial", size=9)
+                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nMEDIDAS: Talla {f.get('4. TALLA')} | Peso {f.get('5. PESO')} | TA {f.get('6. PRESIÓN ARTERIAL')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
+                    pdf.ln(3)
+                    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+                    pdf.ln(2)
+
                 st.download_button(label="📥 Descargar Historial PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf", mime="application/pdf")
 
             with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -142,30 +160,15 @@ elif st.session_state.menu == "Consulta":
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
                     <div class="evo-card">
-                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px;">
-                            <span style="font-size:0.8em; color:#666;">📅 {f.get('MARCA TEMPORAL')}</span>
-                            <span style="font-size:0.8em; font-weight:bold; color:#63b3ed;">REGISTRO MÉDICO</span>
-                        </div>
-                        <div class="section-header">🩺 Motivo de Consulta</div>
-                        <div style="margin-bottom:8px;">{f.get('3. MOTIVO DE LA CONSULTA')}</div>
-                        
-                        <div class="section-header">🧠 Valoración y Hallazgos</div>
-                        <div style="margin-bottom:8px;">{f.get('2. VALORACIÓN')}</div>
-
+                        <small>📅 <b>FECHA:</b> {f.get('MARCA TEMPORAL')}</small><br>
+                        <b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}<br>
+                        <b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}<br>
                         <div class="grid-medidas">
                             <span>📏 <b>Talla:</b> {f.get('4. TALLA')}</span>
                             <span>⚖️ <b>Peso:</b> {f.get('5. PESO')}</span>
                             <span>🩸 <b>P.A.:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        
-                        <div class="section-header">📜 Antecedentes / Notas</div>
-                        <div style="font-size:0.9em; color:#4a5568; margin-bottom:8px;">{f.get('7. ANTECEDENTES MEDICOS')}</div>
-
-                        <div class="section-header">💊 Tratamiento</div>
-                        <div style="background:#f0fff4; padding:8px; border-radius:5px; border:1px solid #c6f6d5; margin-bottom:8px;">{f.get('8. MEDICAMENTOS')}</div>
-                        
-                        <div class="section-header">📝 Epicrisis / Plan</div>
-                        <div style="font-style:italic; background:#fffaf0; padding:8px; border-radius:5px;">{f.get('10. EPICRISIS')}</div>
+                        <p>💊 <b>MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
                     </div>""", unsafe_allow_html=True)
             else: st.info("Sin evoluciones.")
         else: st.error(f"No se encontró el documento: {id_buscado}")
