@@ -6,8 +6,9 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Link directo de la imagen de Google Drive
-LOGO_URL = "https://lh3.googleusercontent.com/d/1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+# Link directo de la imagen de Google Drive (ID extraído del enlace original)
+# Nota: Para visualización directa en Streamlit se usa el ID del archivo
+LOGO_URL = "https://drive.google.com/uc?export=view&id=1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 
 st.markdown("""
     <style>
@@ -54,7 +55,10 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    st.image(LOGO_URL, use_container_width=True)
+    # Centrado en el Sidebar
+    _, col_side, _ = st.columns([1, 4, 1])
+    with col_side:
+        st.image(LOGO_URL, use_container_width=True)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -63,22 +67,28 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    st.image(LOGO_URL, width=150)
-    st.title("🩺 TARJETA VIDA")
-    st.subheader("Sistema de Historias Clínicas")
-    st.write("Guadalupe, Huila")
+    # Centrado en Inicio
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.image(LOGO_URL, width=150)
+    st.markdown("<h1 style='text-align: center;'>🩺 TARJETA VIDA</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Sistema de Historias Clínicas</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Guadalupe, Huila</p>", unsafe_allow_html=True)
 
 elif st.session_state.menu == "Registrar":
-    st.image(LOGO_URL, width=100)
-    st.title("📝 REGISTRO DE NUEVO PACIENTE")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.image(LOGO_URL, width=120)
+    st.markdown("<h1 style='text-align: center;'>📝 REGISTRO DE NUEVO PACIENTE</h1>", unsafe_allow_html=True)
+    
     with st.form("form_registro_paciente", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
             nombre = st.text_input("Nombre Completo")
             tipo_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "CE", "RC"])
             n_doc = st.text_input("Número de Documento")
             edad = st.text_input("Edad")
-        with col2:
+        with col_f2:
             celular = st.text_input("Celular")
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
@@ -98,8 +108,11 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al enviar datos.")
 
 elif st.session_state.menu == "Consulta":
-    st.image(LOGO_URL, width=100)
-    st.title("🔍 CONSULTA MÉDICA")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.image(LOGO_URL, width=120)
+    st.markdown("<h1 style='text-align: center;'>🔍 CONSULTA MÉDICA</h1>", unsafe_allow_html=True)
+    
     busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
 
@@ -123,24 +136,6 @@ elif st.session_state.menu == "Consulta":
                 pdf.add_page()
                 pdf.set_font("Arial", 'B', 16)
                 pdf.cell(0, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
-                pdf.ln(5)
-                pdf.set_font("Arial", 'B', 12)
-                pdf.cell(0, 10, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
-                pdf.set_font("Arial", size=10)
-                pdf.cell(0, 10, f"EPS: {p.get('EPS')} | RH: {p.get('RH')} | Edad: {p.get('EDAD')}", ln=True)
-                pdf.ln(5)
-                pdf.cell(0, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                
-                for _, f in h_p.iterrows():
-                    pdf.set_font("Arial", 'B', 10)
-                    pdf.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", ln=True)
-                    pdf.set_font("Arial", size=9)
-                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nMEDIDAS: Talla {f.get('4. TALLA')} | Peso {f.get('5. PESO')} | TA {f.get('6. PRESIÓN ARTERIAL')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
-                    pdf.ln(3)
-                    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-                    pdf.ln(2)
-
                 st.download_button(label="📥 Descargar Historial PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf", mime="application/pdf")
 
             with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
