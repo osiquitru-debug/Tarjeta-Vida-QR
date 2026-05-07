@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN VISUAL (ESTILO PROFESIONAL) ---
+# --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
 # Enlace estable del logo
@@ -71,13 +71,13 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    st.image(LOGO_URL, width=250) # Imagen sobre el título
+    st.image(LOGO_URL, width=250)
     st.title("🩺 TARJETA VIDA")
     st.write("### *Intelligence Healthcare Management*")
     st.write("Sistema de Historias Clínicas - Guadalupe, Huila")
 
 elif st.session_state.menu == "Registrar":
-    st.image(LOGO_URL, width=120) # Imagen sobre el título
+    st.image(LOGO_URL, width=120)
     st.title("📝 REGISTRO DE PACIENTE")
     with st.form("f_registro", clear_on_submit=True):
         c1, c2 = st.columns(2)
@@ -107,7 +107,7 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al guardar.")
 
 elif st.session_state.menu == "Consulta":
-    st.image(LOGO_URL, width=120) # Imagen sobre el título
+    st.image(LOGO_URL, width=120)
     st.title("🔍 CONSULTA MÉDICA")
     id_buscado_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = id_buscado_raw.split('.')[0].replace(" ", "").strip()
@@ -125,6 +125,33 @@ elif st.session_state.menu == "Consulta":
                 <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
                 <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
+
+            # --- GENERACIÓN DE PDF ---
+            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
+            
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(200, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
+            pdf.ln(10)
+            pdf.set_font("Arial", '', 12)
+            pdf.cell(200, 10, f"Paciente: {p.get('NOMBRE')}", ln=True)
+            pdf.cell(200, 10, f"Documento: {p.get('DOCUMENTO')}", ln=True)
+            pdf.ln(5)
+            
+            if not h_p.empty:
+                pdf.set_font("Arial", 'B', 12)
+                pdf.cell(200, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
+                pdf.set_font("Arial", '', 10)
+                for _, row in h_p.iterrows():
+                    pdf.cell(200, 10, f"Fecha: {row.get('MARCA TEMPORAL')} | Motivo: {row.get('3. MOTIVO DE LA CONSULTA')}", ln=True)
+            
+            st.download_button(
+                label="📥 Descargar Historia Clínica (PDF)",
+                data=pdf.output(dest='S').encode('latin-1'),
+                file_name=f"HC_{id_buscado}.pdf",
+                mime="application/pdf"
+            )
 
             # REGISTRO DE NUEVA EVOLUCIÓN
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -152,7 +179,6 @@ elif st.session_state.menu == "Consulta":
 
             # HISTORIAL EN TARJETAS DE EVOLUCIÓN
             st.subheader("📋 Historial de Evoluciones")
-            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             if not h_p.empty:
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
