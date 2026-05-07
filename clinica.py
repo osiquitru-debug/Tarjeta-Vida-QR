@@ -6,15 +6,9 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Función para convertir enlace de Drive a enlace directo
-def get_direct_link(url):
-    try:
-        file_id = url.split('/')[-2]
-        return f"https://drive.google.com/uc?export=download&id={file_id}"
-    except:
-        return url
-
-LOGO_URL = get_direct_link("https://drive.google.com/file/d/1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH/view?usp=sharing")
+# Enlace de descarga directa corregido (ID del archivo extraído)
+FILE_ID = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+LOGO_URL = f"https://drive.google.com/uc?id={FILE_ID}"
 
 st.markdown(f"""
     <style>
@@ -39,7 +33,6 @@ st.markdown(f"""
         border: 1px solid #e2e8f0; border-left: 5px solid #0891b2;
         margin-bottom: 10px; color: #334155; text-align: left;
     }}
-    .grid-medidas {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }}
     
     div.stButton > button:first-child {{
         background-color: #0891b2; color: white; border: none;
@@ -71,7 +64,8 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    st.image(LOGO_URL, use_container_width=True)
+    # Mostramos el logo en el menú
+    st.image(LOGO_URL)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -168,11 +162,6 @@ elif st.session_state.menu == "Consulta":
                         <small>📅 <b>FECHA:</b> {f.get('MARCA TEMPORAL')}</small><br>
                         <b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}<br>
                         <b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}<br>
-                        <div class="grid-medidas">
-                            <span>📏 <b>Talla:</b> {f.get('4. TALLA')}</span>
-                            <span>⚖️ <b>Peso:</b> {f.get('5. PESO')}</span>
-                            <span>🩸 <b>P.A.:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
-                        </div>
                         <p>💊 <b>MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
                     </div>""", unsafe_allow_html=True)
             else: st.info("Sin evoluciones.")
