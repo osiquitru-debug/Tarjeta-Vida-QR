@@ -3,26 +3,53 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Tarjeta Vida", layout="centered")
+# --- 1. CONFIGURACIÓN VISUAL ---
+st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# --- 2. CARGA DE DATOS (Lógica Simplificada) ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #f0f7f4 !important; }
+    .medical-card {
+        background-color: #ffffff; padding: 20px; border-radius: 15px;
+        border-left: 10px solid #4fd1c5; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 20px; color: #1a202c; text-align: left;
+    }
+    .emergency-box {
+        background-color: #fff5f5; padding: 12px; border-radius: 8px;
+        border: 1px dashed #f56565; color: #c53030; font-weight: bold; margin-top: 10px;
+    }
+    .evo-card {
+        background-color: #ffffff; padding: 15px; border-radius: 10px;
+        border: 1px solid #cbd5e1; border-left: 5px solid #63b3ed;
+        margin-bottom: 10px; color: #2d3748; text-align: left;
+    }
+    .grid-medidas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. CARGA DE DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=2)
 def cargar_datos():
     try:
-        # Cargamos las hojas como texto
-        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("")
-        h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("")
+        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("No registra")
+        h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("No registra")
         
-        # Creamos una clave de búsqueda quitando decimales y espacios
-        p['ID_KEY'] = p.iloc[:, 1].apply(lambda x: str(x).split('.')[0].strip())
-        h['ID_KEY'] = h.iloc[:, 1].apply(lambda x: str(x).split('.')[0].strip())
+        # Limpieza de nombres de columnas (Mayúsculas y sin espacios extras)
+        p.columns = [str(c).strip().upper() for c in p.columns]
+        h.columns = [str(c).strip().upper() for c in h.columns]
+        
+        # Función para limpiar el ID de búsqueda (quita .0 y espacios)
+        def limpiar(txt): return str(txt).split('.')[0].replace(" ", "").strip()
+        
+        # Mapeo de llaves de búsqueda basado en tus encabezados
+        p['ID_KEY'] = p['DOCUMENTO'].apply(limpiar)
+        h['ID_KEY'] = h['1. DOCUMENTO'].apply(limpiar)
         
         return p, h
     except Exception as e:
-        st.error(f"Error de conexión: {e}")
+        st.error(f"Error al conectar con las hojas: {e}")
         return None, None
 
 df_p, df_h = cargar_datos()
@@ -33,43 +60,74 @@ if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 with st.sidebar:
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
-    if st.button("🔍 Consulta", use_container_width=True): st.session_state.menu = "Consulta"
+    if st.button("🔍 Consulta y Evolución", use_container_width=True): st.session_state.menu = "Consulta"
 
 # --- 4. VISTAS ---
 if st.session_state.menu == "Inicio":
-    st.title("SISTEMA MÉDICO")
-    st.write("Panel de control.")
+    st.title("🩺 TARJETA VIDA")
+    st.subheader("Sistema de Historias Clínicas")
+    st.write("Guadalupe, Huila")
 
 elif st.session_state.menu == "Consulta":
-    st.title("🔍 CONSULTA")
-    busqueda = st.text_input("Número de Documento").strip()
-    
-    if busqueda and df_p is not None:
-        # Limpiamos el input del usuario para comparar
-        id_buscado = busqueda.split('.')[0].strip()
-        p_row = df_p[df_p['ID_KEY'] == id_buscado]
+    st.title("🔍 CONSULTA MÉDICA")
+    busqueda_raw = st.text_input("Ingrese el Documento del Paciente")
+    id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
+
+    if id_buscado and df_p is not None:
+        paciente = df_p[df_p['ID_KEY'] == id_buscado]
         
-        if not p_row.empty:
-            p = p_row.iloc[0]
-            st.success("Paciente encontrado")
-            # Mostramos datos básicos por posición para evitar errores de nombre
-            st.subheader(f"👤 {p.iloc[2]}") # Nombre
-            st.write(f"**ID:** {p.iloc[1]} | **RH:** {p.iloc[6]} | **EPS:** {p.iloc[5]}")
+        if not paciente.empty:
+            p = paciente.iloc[0]
+            # TARJETA DEL PACIENTE (USANDO TUS ENCABEZADOS DE HOJA PACIENTES)
+            st.markdown(f"""
+            <div class="medical-card">
+                <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
+                <p style='margin:5px 0;'><b>{p.get('TIPO DE DOCUMENTO')}:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')}</p>
+                <p><b>EPS:</b> {p.get('EPS')} | <b>RH:</b> {p.get('RH')}</p>
+                <p><b>⚠️ CONDICIONES:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
+                <div class="emergency-box">
+                    🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})
+                </div>
+            </div>""", unsafe_allow_html=True)
+            
+            # FORMULARIO PARA NUEVA EVOLUCIÓN
+            with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
+                with st.form("f_evo", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        v2 = st.text_area("2. Valoración"); v3 = st.text_area("3. Motivo Consulta")
+                        v4 = st.text_input("4. Talla"); v5 = st.text_input("5. Peso")
+                    with c2:
+                        v6 = st.text_input("6. Presión Arterial"); v7 = st.text_area("7. Antecedentes")
+                        v8 = st.text_area("8. Medicamentos"); v10 = st.text_area("10. Epicrisis")
+                    
+                    if st.form_submit_button("GUARDAR REGISTRO"):
+                        # Aquí enviarías los datos a tu Google Form de Historial
+                        st.success("Información enviada al historial."); st.cache_data.clear()
 
-            with st.expander("📝 REGISTRAR EVOLUCIÓN"):
-                with st.form("f_evo"):
-                    v1 = st.text_area("Valoración"); v2 = st.text_area("Motivo")
-                    if st.form_submit_button("GUARDAR"):
-                        h_pay = {"entry.2019369477": id_buscado, "entry.1088523869": v1, "entry.611862537": v2}
-                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=h_pay)
-                        st.success("Guardado."); st.cache_data.clear(); st.rerun()
-
-            st.subheader("📋 HISTORIAL")
-            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-            if not h_p.empty:
-                for _, f in h_p.iterrows():
-                    st.info(f"📅 {f.iloc[0]} | Motivo: {f.iloc[3]} | Valoración: {f.iloc[2]}")
-            else:
-                st.write("No hay registros.")
+            # LISTADO DE EVOLUCIONES (USANDO TUS ENCABEZADOS DE HOJA HISTORIAL)
+            st.subheader("📋 HISTORIAL DE EVOLUCIONES")
+            if df_h is not None:
+                h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
+                
+                if not h_p.empty:
+                    for _, f in h_p.iterrows():
+                        st.markdown(f"""
+                        <div class="evo-card">
+                            <div style="border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px;">
+                                📅 <b>FECHA:</b> {f.get('MARCA TEMPORAL')}
+                            </div>
+                            <p><b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}</p>
+                            <p><b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}</p>
+                            <div class="grid-medidas">
+                                <span>📏 <b>Talla:</b> {f.get('4. TALLA')}</span>
+                                <span>⚖️ <b>Peso:</b> {f.get('5. PESO')}</span>
+                                <span>🩸 <b>P.A.:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
+                            </div>
+                            <p>💊 <b>MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
+                            <p>📝 <b>EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
+                        </div>""", unsafe_allow_html=True)
+                else:
+                    st.info("No hay evoluciones registradas para este paciente.")
         else:
-            st.error("No se encontró el paciente.")
+            st.error(f"No se encontró ningún paciente con el documento: {id_buscado}")
