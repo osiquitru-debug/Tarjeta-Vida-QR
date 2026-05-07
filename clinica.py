@@ -20,11 +20,20 @@ st.markdown(f"""
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
-    /* FLECHAS BLANCAS PARA EL MENÚ (Sidebar Toggle) */
-    button[data-testid="sidebar-button-nav"] svg, 
-    button[aria-label="Collapse sidebar"] svg, 
-    button[aria-label="Expand sidebar"] svg {{
+    /* FLECHAS BLANCAS (CHEVRON) - FORZADO */
+    button[data-testid="stSidebarCollapseIcon"] svg,
+    button[aria-label="Collapse sidebar"] svg,
+    button[aria-label="Expand sidebar"] svg,
+    .st-emotion-cache-6qob1r svg {{
         fill: #ffffff !important;
+        color: #ffffff !important;
+        stroke: #ffffff !important;
+    }}
+    
+    /* Asegurar que el botón contenedor no opaque el color */
+    button[data-testid="stSidebarCollapseIcon"], 
+    button[aria-label="Collapse sidebar"], 
+    button[aria-label="Expand sidebar"] {{
         color: #ffffff !important;
     }}
 
@@ -136,7 +145,6 @@ elif st.session_state.menu == "Consulta":
             tel_emer = obtener_dato(p, ["TEL", "CONTACTO", "EMERGENCIA"])
             alertas = obtener_dato(p, ["CONDICIONES", "ESPECIALES"])
 
-            # TARJETA PACIENTE
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE', 'No registra')}</h2>
@@ -148,7 +156,6 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- PDF COMPLETO ---
             pdf = FPDF()
             pdf.add_page()
             try: pdf.image(LOGO_URL, 10, 8, 30)
@@ -182,7 +189,6 @@ elif st.session_state.menu == "Consulta":
 
             st.download_button("📥 Descargar Reporte PDF Completo", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
 
-            # --- NUEVA EVOLUCIÓN ---
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
                 with st.form("f_evo"):
                     c1, c2 = st.columns(2)
@@ -195,7 +201,6 @@ elif st.session_state.menu == "Consulta":
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_e)
                         st.success("✅ Guardado."); st.cache_data.clear(); st.rerun()
 
-            # --- HISTORIAL EN PANTALLA ---
             st.subheader("📋 Evoluciones")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
