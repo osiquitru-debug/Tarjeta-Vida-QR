@@ -6,27 +6,45 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Enlace de descarga directa del logo
-LOGO_URL = "https://lh3.googleusercontent.com/d/1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+# Enlace directo de la imagen
+LOGO_URL = "https://drive.google.com/uc?export=download&id=1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 
-st.markdown("""
+st.markdown(f"""
     <style>
-    .stApp { background-color: #f0f7f4 !important; }
-    .medical-card {
+    /* Fondo general basado en el logo */
+    .stApp {{ background-color: #f8fafc !important; }}
+    
+    /* Barra lateral con tono oscuro profesional */
+    [data-testid="stSidebar"] {{
+        background-color: #1e293b !important;
+        color: white;
+    }}
+    [data-testid="stSidebar"] * {{ color: white !important; }}
+
+    /* Estilo de Tarjetas - Borde cian como el logo */
+    .medical-card {{
         background-color: #ffffff; padding: 20px; border-radius: 15px;
-        border-left: 10px solid #4fd1c5; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 20px; color: #1a202c; text-align: left;
-    }
-    .emergency-box {
-        background-color: #fff5f5; padding: 12px; border-radius: 8px;
-        border: 1px dashed #f56565; color: #c53030; font-weight: bold; margin-top: 10px;
-    }
-    .evo-card {
+        border-left: 10px solid #22d3ee; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 20px; color: #1e293b; text-align: left;
+    }}
+    .emergency-box {{
+        background-color: #fff1f2; padding: 12px; border-radius: 8px;
+        border: 1px dashed #f43f5e; color: #9f1239; font-weight: bold; margin-top: 10px;
+    }}
+    .evo-card {{
         background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border: 1px solid #cbd5e1; border-left: 5px solid #63b3ed;
-        margin-bottom: 10px; color: #2d3748; text-align: left;
-    }
-    .grid-medidas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }
+        border: 1px solid #e2e8f0; border-left: 5px solid #0891b2;
+        margin-bottom: 10px; color: #334155; text-align: left;
+    }}
+    .grid-medidas {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }}
+    
+    /* Botones con el color turquesa del logo */
+    div.stButton > button:first-child {{
+        background-color: #0891b2; color: white; border: none;
+    }}
+    div.stButton > button:hover {{
+        background-color: #0e7490; color: white; border: none;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -54,7 +72,6 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # Imagen centrada en el sidebar
     st.image(LOGO_URL, use_container_width=True)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
@@ -64,13 +81,13 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    st.image(LOGO_URL, width=200)
+    st.image(LOGO_URL, width=220)
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
 
 elif st.session_state.menu == "Registrar":
-    st.image(LOGO_URL, width=100)
+    st.image(LOGO_URL, width=120)
     st.title("📝 REGISTRO DE NUEVO PACIENTE")
     with st.form("form_registro_paciente", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -99,7 +116,7 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al enviar datos.")
 
 elif st.session_state.menu == "Consulta":
-    st.image(LOGO_URL, width=100)
+    st.image(LOGO_URL, width=120)
     st.title("🔍 CONSULTA MÉDICA")
     busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
