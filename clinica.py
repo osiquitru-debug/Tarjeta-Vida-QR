@@ -2,41 +2,29 @@ import streamlit as st
 import pandas as pd
 import requests
 from fpdf import FPDF
-from datetime import datetime
+import unicodedata
 import io
 
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. DISEÑO CSS ORIGINAL (RESTAURADO Y MEJORADO) ---
+# --- 2. DISEÑO CSS (RESTAURADO Y MEJORADO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
-    
-    /* Texto Negro en toda la aplicación */
     label, p, h1, h2, h3, span, div, li { color: #000000 !important; font-weight: 600 !important; }
-    
-    /* Casillas de entrada blancas con texto negro */
     input, textarea, [data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 2px solid #a2d2ff !important;
+        background-color: #ffffff !important; color: #000000 !important; border: 2px solid #a2d2ff !important;
     }
-
-    /* Sidebar con color original */
     [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { 
         width: 100%; background-color: #ffffff !important; color: #000000 !important; 
         border: 2px solid #d8b4fe !important; font-weight: bold !important; margin-bottom: 10px; 
     }
-
-    /* Botón de acción principal */
     div.stButton > button:first-child:not(.stSidebar button) {
         background-color: #4fd1c5 !important; color: #000000 !important; 
         border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
-
-    /* Tarjetas de diseño */
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; 
         border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
@@ -56,42 +44,39 @@ URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpcc
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 4. FUNCIÓN PDF (FORMATO CORREGIDO) ---
+# --- 4. FUNCIONES DE AYUDA ---
+def normalizar_texto(texto):
+    if pd.isna(texto): return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn').upper().strip()
+
+def buscar_dato(fila, palabras_clave):
+    for col in fila.index:
+        if any(p in normalizar_texto(col) for p in palabras_clave):
+            return str(fila[col])
+    return "N/R"
+
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, txt="REPORTE MÉDICO - TARJETA VIDA", ln=True, align='C')
+    pdf.cell(0, 10, txt="REPORTE MEDICO - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     
-    # Encabezado Paciente
-    pdf.set_fill_color(240, 255, 244)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True, fill=True)
+    pdf.cell(0, 10, txt="DATOS DEL PACIENTE", ln=True)
     pdf.set_font("Arial", '', 11)
-    pdf.cell(0, 8, txt=f"Nombre: {paciente.get('NOMBRE', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"Documento: {paciente.get('DOCUMENTO', 'N/R')} | RH: {paciente.get('RH', 'N/R')} | Edad: {paciente.get('EDAD', 'N/R')}", ln=True)
-    pdf.cell(0, 8, txt=f"EPS: {paciente.get('EPS', 'N/R')} | Celular: {paciente.get('CELULAR', 'N/R')}", ln=True)
-    pdf.multi_cell(0, 8, txt=f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
+    pdf.cell(0, 8, txt=f"Nombre: {buscar_dato(paciente, ['NOM'])}", ln=True)
+    pdf.cell(0, 8, txt=f"Documento: {buscar_dato(paciente, ['DOC'])} | RH: {buscar_dato(paciente, ['RH'])}", ln=True)
     pdf.ln(5)
     
-    # Historial
-    pdf.set_fill_color(243, 232, 255)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
-    
-    if not historial.empty:
-        for i, fila in historial.iterrows():
-            pdf.set_font("Arial", 'B', 10)
-            pdf.ln(3)
-            # Captura de la marca de tiempo de Sheets
-            fecha = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or "S/F"
-            pdf.cell(0, 6, txt=f"REGISTRO #{i+1} - FECHA: {fecha}", ln=True)
-            pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(0, 5, txt=f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}")
-            pdf.multi_cell(0, 5, txt=f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}")
-            pdf.multi_cell(0, 5, txt=f"Procedimientos: {fila.get('PROCEDIMIENTOS', 'N/R')}")
-            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.cell(0, 10, txt="HISTORIAL DE EVOLUCIONES", ln=True)
+    pdf.set_font("Arial", '', 10)
+    for i, fila in historial.iterrows():
+        fecha = buscar_dato(fila, ['MARCA', 'FECHA'])
+        pdf.cell(0, 8, txt=f"FECHA: {fecha}", ln=True)
+        pdf.multi_cell(0, 6, txt=f"Tratamiento: {buscar_dato(fila, ['TRATAMIENTO'])}")
+        pdf.cell(0, 2, txt="", ln=True, border='B')
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 5. CARGA DE DATOS ---
@@ -100,17 +85,17 @@ def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial")
-        p.columns = p.columns.str.strip().str.upper()
-        h.columns = h.columns.str.strip().str.upper()
+        # Limpieza crucial de documentos
         for df in [p, h]:
-            if 'DOCUMENTO' in df.columns:
-                df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            doc_col = next((c for c in df.columns if "DOC" in normalizar_texto(c)), None)
+            if doc_col:
+                df[doc_col] = df[doc_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
         return p, h
     except: return None, None
 
 df_p, df_h = cargar_datos()
 
-# --- 6. NAVEGACIÓN (RESTAURADA) ---
+# --- 6. NAVEGACIÓN ---
 if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 
 with st.sidebar:
@@ -150,32 +135,33 @@ elif st.session_state.menu == "Consulta":
     st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
     id_bus = st.text_input("Ingrese Documento").strip()
     if id_bus and df_p is not None:
-        paciente = df_p[df_p["DOCUMENTO"] == id_bus]
+        doc_col_p = next((c for c in df_p.columns if "DOC" in normalizar_texto(c)), "DOCUMENTO")
+        paciente = df_p[df_p[doc_col_p] == id_bus]
+        
         if not paciente.empty:
             p = paciente.iloc[0]
-            h_p = df_h[df_h["DOCUMENTO"] == id_bus].reset_index(drop=True)
+            doc_col_h = next((c for c in df_h.columns if "DOC" in normalizar_texto(c)), "DOCUMENTO")
+            h_p = df_h[df_h[doc_col_h] == id_bus].reset_index(drop=True)
             
-            st.download_button("🖨️ Descargar PDF Completo", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
+            st.download_button("🖨️ Descargar PDF", data=generar_pdf(p, h_p), file_name=f"Reporte_{id_bus}.pdf")
 
             st.markdown(f"""
             <div class="medical-card">
-                <h2>👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
+                <h2>👤 {buscar_dato(p, ['NOM'])}</h2>
+                <p><b>ID:</b> {id_bus} | <b>RH:</b> {buscar_dato(p, ['RH'])} | <b>Edad:</b> {buscar_dato(p, ['EDAD'])}</p>
                 <div class="emergency-box">
-                    <b>🚨 EMERGENCIA:</b> {p.get('NOMBRE CONTACTO EMERGENCIA', '')} - {p.get('TELEFONO CONTACTO EMERGENCIA', '')}
+                    <b>🚨 EMERGENCIA:</b> {buscar_dato(p, ['CONTACTO'])} - {buscar_dato(p, ['TEL'])}
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
             for i in range(len(h_p)-1, -1, -1):
-                fila = h_p.iloc[i]
-                ts = fila.get('MARCA TEMPORAL') or fila.get('TIMESTAMP') or ""
+                f = h_p.iloc[i]
                 st.markdown(f"""
                 <div class="evolution-card">
-                    <b>Evolución #{i+1} - Fecha: {ts}</b><br>
-                    🩺 <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/A')}<br>
-                    💊 <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/A')}<br>
-                    📋 <b>Procedimientos:</b> {fila.get('PROCEDIMIENTOS', 'N/A')}
+                    <b>Evolución #{i+1} - Fecha: {buscar_dato(f, ['MARCA', 'FECHA'])}</b><br>
+                    🩺 <b>Tratamiento:</b> {buscar_dato(f, ['TRATAMIENTO'])}<br>
+                    💊 <b>Medicamentos:</b> {buscar_dato(f, ['MEDICAMENTOS'])}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -189,8 +175,11 @@ elif st.session_state.menu == "Consulta":
                         "entry.2019369477": id_bus, "entry.611862537": t, 
                         "entry.2016051626": m, "entry.1088523869": pr
                     })
+                    st.success("✅ Evolución guardada.")
                     st.cache_data.clear()
                     st.rerun()
+        else:
+            st.error("❌ Paciente no encontrado.")
 
 elif st.session_state.menu == "Base":
     st.markdown("### 📊 Base de Datos")
