@@ -114,14 +114,16 @@ elif st.session_state.menu == "Consulta":
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA PACIENTE
+            
+            # Se usan nombres normalizados según la carga de datos
+            # Ajuste de claves para asegurar visualización de emergencia
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
                 <p><b>ID:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')} | <b>RH:</b> {p.get('RH')}</p>
                 <p><b>EPS:</b> {p.get('EPS')} | <b>CEL:</b> {p.get('CELULAR')}</p>
                 <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
-                <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELÉFONO CONTACTO EMERGENCIA')})</div>
+                <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} (Tel: {p.get('TELÉFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
@@ -134,7 +136,6 @@ elif st.session_state.menu == "Consulta":
             pdf.set_font("Arial", 'B', 14); pdf.cell(0, 10, "Historia Clinica Completa - Tarjeta Vida QR", ln=True, align='C')
             pdf.ln(5)
             
-            # Datos del Paciente en PDF
             pdf.set_fill_color(230, 230, 230)
             pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, 'L', 1)
             pdf.set_font("Arial", '', 9)
