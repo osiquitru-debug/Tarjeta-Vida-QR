@@ -44,7 +44,7 @@ st.markdown(f"""
         border: 1px dashed #f43f5e; color: #b91c1c; font-weight: bold; margin-top: 10px;
     }}
 
-    /* ESTRUCTURA ORIGINAL: TARJETA DE EVOLUCIÓN (SIN NÚMEROS) */
+    /* ESTRUCTURA ORIGINAL: TARJETA DE EVOLUCIÓN */
     .evo-card {{
         background-color: #ffffff; padding: 15px; border-radius: 10px;
         border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7;
@@ -63,6 +63,18 @@ st.markdown(f"""
         border: none !important;
         border-radius: 10px !important;
         font-weight: bold !important;
+    }}
+
+    /* Estilo para el Copyright */
+    .footer {{
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        color: gray;
+        font-size: 0.8em;
+        padding: 10px;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -96,9 +108,9 @@ with st.sidebar:
 # --- 4. VISTAS ---
 if st.session_state.menu == "Inicio":
     st.image(LOGO_URL, width=280)
-    st.title("🩺 TARJETA VIDA")
-    st.write("### *Intelligence Healthcare Management*")
-    st.write("Guadalupe, Huila.")
+    st.title("🩺 Tarjeta Vida QR")
+    st.markdown("### *Tu Información de Salud Siempre Contigo*")
+    st.markdown('<div class="footer">© 2024 Abril_Garcia_Sierra</div>', unsafe_allow_html=True)
 
 elif st.session_state.menu == "Registrar":
     st.image(LOGO_URL, width=120)
@@ -129,7 +141,7 @@ elif st.session_state.menu == "Consulta":
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA DE PACIENTE (RESTAURADA TAL CUAL)
+            # TARJETA DE PACIENTE (ORIGINAL)
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
@@ -141,7 +153,7 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             
-            # Botón PDF
+            # PDF
             pdf = FPDF()
             pdf.add_page(); pdf.set_font("Arial", 'B', 16)
             pdf.cell(200, 10, f"HC: {p.get('NOMBRE')}", ln=True, align='C')
@@ -160,7 +172,7 @@ elif st.session_state.menu == "Consulta":
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
                         st.success("Guardado."); st.cache_data.clear(); st.rerun()
 
-            # TARJETA DE EVOLUCIÓN (ESTRUCTURA ORIGINAL SIN NUMERACIÓN)
+            # TARJETA DE EVOLUCIÓN (ORIGINAL SIN NÚMEROS)
             st.subheader("📋 Historial de Evoluciones")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
