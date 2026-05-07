@@ -110,7 +110,7 @@ if st.session_state.menu == "Inicio":
     st.image(LOGO_URL, width=280)
     st.title("🩺 Tarjeta Vida QR")
     st.markdown("### *Tu Información de Salud Siempre Contigo*")
-    st.markdown('<div class="footer">© 2024 Abril_Garcia_Sierra</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">© 2026 Abril_Garcia_Sierra</div>', unsafe_allow_html=True)
 
 elif st.session_state.menu == "Registrar":
     st.image(LOGO_URL, width=120)
