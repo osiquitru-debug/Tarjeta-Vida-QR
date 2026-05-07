@@ -6,22 +6,25 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Enlace directo de la imagen
-LOGO_URL = "https://drive.google.com/uc?export=download&id=1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+# Función para convertir enlace de Drive a enlace directo
+def get_direct_link(url):
+    try:
+        file_id = url.split('/')[-2]
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+    except:
+        return url
+
+LOGO_URL = get_direct_link("https://drive.google.com/file/d/1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH/view?usp=sharing")
 
 st.markdown(f"""
     <style>
-    /* Fondo general basado en el logo */
     .stApp {{ background-color: #f8fafc !important; }}
     
-    /* Barra lateral con tono oscuro profesional */
     [data-testid="stSidebar"] {{
         background-color: #1e293b !important;
-        color: white;
     }}
     [data-testid="stSidebar"] * {{ color: white !important; }}
 
-    /* Estilo de Tarjetas - Borde cian como el logo */
     .medical-card {{
         background-color: #ffffff; padding: 20px; border-radius: 15px;
         border-left: 10px solid #22d3ee; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -38,12 +41,8 @@ st.markdown(f"""
     }}
     .grid-medidas {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }}
     
-    /* Botones con el color turquesa del logo */
     div.stButton > button:first-child {{
         background-color: #0891b2; color: white; border: none;
-    }}
-    div.stButton > button:hover {{
-        background-color: #0e7490; color: white; border: none;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -81,7 +80,7 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    st.image(LOGO_URL, width=220)
+    st.image(LOGO_URL, width=250)
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
