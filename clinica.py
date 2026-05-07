@@ -4,10 +4,10 @@ import requests
 from fpdf import FPDF
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
+# --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. ESTÉTICA BLINDADA (VERDE MENTA, MORADO, TURQUESA) ---
+# --- 2. ESTÉTICA (VERDE MENTA, MORADO, TURQUESA) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
@@ -56,17 +56,17 @@ def cargar_datos():
         url = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
         p = pd.read_csv(f"{url}&sheet=pacientes")
         h = pd.read_csv(f"{url}&sheet=historial")
+        # Normalización para búsqueda de Documento
         p.columns = [c.strip().upper() for c in p.columns]
         h.columns = [c.strip().upper() for c in h.columns]
-        for df in [p, h]:
-            if 'DOCUMENTO' in df.columns:
-                df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.split('.').str[0].str.strip()
+        if 'DOCUMENTO' in p.columns: p['DOCUMENTO'] = p['DOCUMENTO'].astype(str).str.split('.').str[0].str.strip()
+        if 'DOCUMENTO' in h.columns: h['DOCUMENTO'] = h['DOCUMENTO'].astype(str).str.split('.').str[0].str.strip()
         return p, h
     except: return None, None
 
 df_p, df_h = cargar_datos()
 
-# --- 4. MENÚ LATERAL (ORDEN SOLICITADO: REGISTRO, CONSULTA, BASE) ---
+# --- 4. MENÚ LATERAL (ORDEN: REGISTRO, CONSULTA, BASE) ---
 if 'menu' not in st.session_state: st.session_state.menu = "Consulta"
 
 with st.sidebar:
@@ -80,18 +80,17 @@ st.markdown(f'<div class="logo-container"><img src="{URL_LOGO}" width="150"></di
 # --- 5. LÓGICA DE SECCIONES ---
 
 if st.session_state.menu == "Registrar":
-    st.markdown("<h1 style='text-align: center;'>Registrar Nuevo Paciente</h1>", unsafe_allow_html=True)
-    st.info("Utilice el formulario oficial para dar de alta nuevos usuarios en el sistema.")
+    st.markdown("<h1 style='text-align: center;'>Registro de Pacientes</h1>", unsafe_allow_html=True)
+    st.info("Complete el formulario externo para registrar nuevos usuarios.")
 
 elif st.session_state.menu == "Consulta":
-    busq = st.text_input("Documento del Paciente").strip()
+    busq = st.text_input("Ingrese Documento para Consultar").strip()
     if busq and df_p is not None:
         pac = df_p[df_p["DOCUMENTO"] == busq]
         if not pac.empty:
             p = pac.iloc[0]
             h_p = df_h[df_h["DOCUMENTO"] == busq] if df_h is not None else pd.DataFrame()
             
-            # Tarjeta de Datos
             st.markdown(f"""
             <div class="medical-card">
                 <h2>👤 {p.get('NOMBRE', 'N/A')}</h2>
@@ -103,15 +102,13 @@ elif st.session_state.menu == "Consulta":
             </div>
             """, unsafe_allow_html=True)
 
-            # Botón PDF
             if not h_p.empty:
                 pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", 'B', 14)
                 pdf.cell(0, 10, f"Historial Clinico: {p.get('NOMBRE')}", ln=True)
                 pdf_bytes = pdf.output(dest='S').encode('latin-1')
                 st.download_button("📥 DESCARGAR HISTORIAL PDF", pdf_bytes, f"HC_{busq}.pdf")
 
-            # Formulario con orden exacto del Sheet
-            with st.expander("✍️ AGREGAR NUEVA EVOLUCIÓN"):
+            with st.expander("✍️ AGREGAR EVOLUCIÓN"):
                 with st.form("f_evo", clear_on_submit=True):
                     mot = st.text_input("1. Motivo de la Consulta")
                     c1, c2, c3 = st.columns(3)
@@ -124,29 +121,31 @@ elif st.session_state.menu == "Consulta":
                     val = st.text_input("8. Valoración")
                     epi = st.text_area("9. Epicrisis")
                     
-                    if st.form_submit_button("GUARDAR EN EL SISTEMA"):
+                    if st.form_submit_button("GUARDAR"):
                         pay = {
                             "entry.2019369477": busq, "entry.611862537": mot, "entry.949747647": tll,
                             "entry.2091389798": pes, "entry.882053172": ten, "entry.889985940": ant,
                             "entry.2016051626": med, "entry.1088523869": lab, "entry.1275746503": val, "entry.616774918": epi
                         }
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=pay)
-                        st.success("¡Datos guardados!"); st.cache_data.clear(); st.rerun()
+                        st.success("Guardado"); st.cache_data.clear(); st.rerun()
 
-            # Visualización del Historial
+            # --- ESTRUCTURACIÓN DE TARJETA BASADA EN EL ORDEN DEL SHEET ---
             for i in range(len(h_p)-1, -1, -1):
                 f = h_p.iloc[i]
+                # Mapeo manual basado en los nombres exactos definidos en el formulario/sheet
                 st.markdown(f"""
                 <div class="evolution-card">
-                    <p style="color:#2b6cb0;">📅 <b>FECHA: {f.get('MARCA TEMPORAL', 'S/F')}</b></p>
+                    <p style="color:#2b6cb0;">📅 <b>FECHA: {f.get('MARCA TEMPORAL', 'N/A')}</b></p>
                     <p><b>🩺 MOTIVO:</b> {f.get('MOTIVO DE LA CONSULTA', 'N/A')}</p>
-                    <p>📋 <b>VALORACIÓN:</b> {f.get('VALORACIÓN', 'N/A')}</p>
                     <p>📏 <b>TALLA:</b> {f.get('TALLA', 'N/A')} | ⚖️ <b>PESO:</b> {f.get('PESO', 'N/A')} | 💓 <b>TA:</b> {f.get('PRESIÓN ARTERIAL', 'N/A')}</p>
+                    <p>💊 <b>ANTECEDENTES:</b> {f.get('ANTECEDENTES MEDICOS', 'N/A')}</p>
+                    <p>📦 <b>MEDICAMENTOS:</b> {f.get('MEDICAMENTOS', 'N/A')}</p>
                     <p>🧪 <b>LABORATORIOS:</b> {f.get('LABORATORIOS', 'N/A')}</p>
+                    <p>📋 <b>VALORACIÓN:</b> {f.get('VALORACIÓN', 'N/A')}</p>
                     <p>📝 <b>EPICRISIS:</b> {f.get('EPICRISIS', 'N/A')}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
 elif st.session_state.menu == "Base":
-    st.markdown("## Datos del Sistema")
     st.dataframe(df_h)
