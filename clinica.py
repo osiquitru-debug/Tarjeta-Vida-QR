@@ -7,180 +7,154 @@ import unicodedata
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica QR", layout="centered", page_icon="🩺")
 
-# --- 2. ESTÉTICA DE ALTO CONTRASTE (VERDE MENTA, MORADO, TURQUESA) ---
+# --- 2. ESTÉTICA "PERFECTA" (TEXTO NEGRO, VERDE MENTA, MORADO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f0fff4 !important; }
     
-    /* Forzar texto negro y negrita para legibilidad absoluta */
-    html, body, [class*="st-"], p, div, label, h1, h2, h3, span, li {
-        color: #000000 !important;
-        font-weight: 800 !important;
+    /* Forzar texto negro y negrita absoluta */
+    label, p, h1, h2, h3, span, div, li, .stMarkdown { 
+        color: #000000 !important; 
+        font-weight: 800 !important; 
     }
-
-    .logo-container { display: flex; justify-content: center; margin: 10px 0; }
     
-    /* Tarjeta Principal del Paciente */
-    .medical-card {
-        background-color: #ffffff; padding: 25px; border-radius: 20px; 
-        border: 3px solid #b2f5ea; border-left: 20px solid #4fd1c5; 
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1); margin-bottom: 25px;
-    }
-    .emergency-box {
-        background-color: #fff5f5; padding: 15px; border-radius: 12px;
-        border: 2px dashed #feb2b2; margin-top: 15px;
+    /* Inputs Blancos */
+    input, textarea, [data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 2px solid #a2d2ff !important;
     }
 
-    /* Tarjeta de Evolución Optimizada */
-    .evolution-card {
-        background-color: #ffffff; padding: 22px; border-radius: 15px; 
-        border: 1px solid #cbd5e0; border-left: 12px solid #63b3ed; 
-        margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    }
-    .vital-sign-tag {
-        background-color: #e6fffa; border: 2px solid #4fd1c5;
-        padding: 6px 14px; border-radius: 10px; margin-right: 10px;
-        display: inline-block; font-size: 15px;
-    }
-
-    /* Sidebar Morado */
-    [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 4px solid #d8b4fe; }
+    /* Sidebar Morado Original */
+    [data-testid="stSidebar"] { background-color: #f3e8ff !important; border-right: 2px solid #d8b4fe; }
     .stSidebar button { 
         width: 100%; background-color: #ffffff !important; color: #000000 !important; 
-        border: 3px solid #d8b4fe !important; font-weight: 900 !important; 
-        margin-bottom: 12px; border-radius: 12px;
-    }
-    
-    /* Botones de Acción Turquesa */
-    div.stButton > button:first-child:not(.stSidebar button) {
-        background-color: #4fd1c5 !important; color: #000000 !important; 
-        border-radius: 15px; font-weight: 900 !important; border: 3px solid #285e61; 
-        height: 3.8em; width: 100%; text-transform: uppercase;
+        border: 2px solid #d8b4fe !important; font-weight: 900 !important; margin-bottom: 10px; 
     }
 
-    /* Inputs y Textareas */
-    input, textarea, [data-baseweb="select"] > div { 
-        background-color: #ffffff !important; border: 2px solid #a2d2ff !important; 
-        color: #000000 !important; border-radius: 10px !important;
+    /* Botón Turquesa */
+    div.stButton > button:first-child:not(.stSidebar button) {
+        background-color: #4fd1c5 !important; color: #000000 !important; 
+        border-radius: 12px; font-weight: 900 !important; border: 2px solid #285e61; height: 3.5em; width: 100%;
     }
+
+    /* Tarjetas de Diseño */
+    .medical-card {
+        background-color: #ffffff; padding: 20px; border-radius: 15px; border: 2px solid #b2f5ea; 
+        border-left: 15px solid #4fd1c5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+    }
+    .evolution-card {
+        background-color: #ffffff; padding: 20px; border-radius: 15px; border: 1px solid #cbd5e0; 
+        border-left: 12px solid #63b3ed; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    .emergency-box { background-color: #fff5f5; padding: 12px; border-radius: 10px; border: 2px dashed #f56565; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. MOTOR DE BÚSQUEDA DE DATOS (EVITA CRUCES) ---
-def norm_c(t):
+# --- 3. LÓGICA DE DATOS (RADAR ANTI-CRUCE) ---
+def norm(t):
     return ''.join(c for c in unicodedata.normalize('NFD', str(t)) if unicodedata.category(c) != 'Mn').upper().strip()
 
-def get_data(fila, claves):
+def buscar_dato(fila, palabras):
     for col in fila.index:
-        if any(norm_c(k) in norm_c(col) for k in claves):
+        if any(norm(p) in norm(col) for p in palabras):
             return fila[col]
-    return "N/R"
+    return "No registrado"
 
 @st.cache_data(ttl=1)
-def fetch_sheets():
+def cargar_datos():
     try:
         url = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
         p = pd.read_csv(f"{url}&sheet=pacientes")
         h = pd.read_csv(f"{url}&sheet=historial")
         for df in [p, h]:
-            c_doc = next((c for c in df.columns if "DOC" in norm_c(c) or "ID" in norm_c(c)), None)
-            if c_doc: df[c_doc] = df[c_doc].astype(str).str.split('.').str[0].str.strip()
+            c_doc = next((c for c in df.columns if "DOC" in norm(c)), None)
+            if c_doc: df[c_doc] = df[c_doc].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
         return p, h
     except: return None, None
 
-df_p, df_h = fetch_sheets()
+df_p, df_h = cargar_datos()
 
 # --- 4. NAVEGACIÓN ---
 ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
 
-if 'menu' not in st.session_state: st.session_state.menu = "Consulta e Historial"
+if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
 
 with st.sidebar:
-    st.markdown(f'<div class="logo-container"><img src="{URL_LOGO}" width="100"></div>', unsafe_allow_html=True)
-    if st.button("📝 Registro del Paciente"): st.session_state.menu = "Registro del Paciente"
-    if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta e Historial"
-    if st.button("📊 Base de datos"): st.session_state.menu = "Base de datos"
+    st.image(URL_LOGO, use_container_width=True)
+    st.markdown("---")
+    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
+    if st.button("🔍 Consulta e Historial"): st.session_state.menu = "Consulta"
+    if st.button("📊 Base de Datos"): st.session_state.menu = "Base"
 
 # --- 5. SECCIONES ---
-
-if st.session_state.menu == "Registro del Paciente":
-    st.markdown("<h1 style='text-align:center;'>📝 Registro del Paciente</h1>", unsafe_allow_html=True)
+if st.session_state.menu == "Registrar":
+    st.markdown("<h1 style='text-align: center;'>Gestión Médica Tarjeta QR</h1>", unsafe_allow_html=True)
     with st.form("reg_form", clear_on_submit=True):
-        st.markdown("### 👤 Datos Personales")
-        c1, c2 = st.columns(2)
-        nombre = c1.text_input("Nombre Completo")
-        cedula = c2.text_input("Documento de Identidad")
-        
-        c3, c4, c5 = st.columns(3)
-        rh = c3.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        edad = c4.text_input("Edad")
-        sexo = c5.selectbox("Sexo", ["Masculino", "Femenino", "Otro"])
-        
+        nombre = st.text_input("Nombre Completo")
+        cedula = st.text_input("Número de Documento")
+        condiciones = st.text_area("Condiciones Especiales / Alergias")
+        edad = st.text_input("Edad")
+        rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         eps = st.text_input("EPS")
-        
+        cel = st.text_input("Celular")
         st.markdown("### 🚨 Contacto de Emergencia")
-        c_nom = st.text_input("Nombre del Contacto")
-        c_tel = st.text_input("Teléfono del Contacto")
-        
-        st.markdown("### 💊 Antecedentes Médicos")
-        ant_med = st.text_area("Alergias, Cirugías, Enfermedades Crónicas")
-        
-        if st.form_submit_button("REGISTRAR PACIENTE"):
-            st.success("✅ Datos registrados correctamente."); st.balloons()
+        e_nom = st.text_input("Nombre contacto emergencia")
+        e_tel = st.text_input("Teléfono contacto emergencia")
+        if st.form_submit_button("GUARDAR PACIENTE"):
+            payload = {
+                "entry.346175428": nombre, "entry.1302424820": cedula,
+                "entry.1801154005": edad, "entry.1043165037": cel, "entry.1172011247": eps,
+                "entry.162368130": rh, "entry.346363": condiciones, 
+                "entry.1892763134": e_nom, "entry.2011749615": e_tel
+            }
+            requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
+            st.success("✅ Paciente registrado."); st.cache_data.clear()
 
-elif st.session_state.menu == "Consulta e Historial":
-    st.markdown("<h1 style='text-align:center;'>🔍 Consulta e Historial</h1>", unsafe_allow_html=True)
-    target = st.text_input("Documento del Paciente").strip()
-    
-    if target and df_p is not None:
-        c_doc_p = next((c for c in df_p.columns if "DOC" in norm_c(c) or "ID" in norm_c(c)), None)
-        p_row = df_p[df_p[c_doc_p] == target] if c_doc_p else pd.DataFrame()
-        
+elif st.session_state.menu == "Consulta":
+    st.markdown("<h1 style='text-align: center;'>Consulta e Historial</h1>", unsafe_allow_html=True)
+    id_bus = st.text_input("Ingrese Documento").strip()
+    if id_bus and df_p is not None:
+        p_row = df_p[df_p["DOCUMENTO"] == id_bus]
         if not p_row.empty:
             p = p_row.iloc[0]
-            c_doc_h = next((c for c in df_h.columns if "DOC" in norm_c(c) or "ID" in norm_c(c)), None)
-            h_rows = df_h[df_h[c_doc_h] == target] if c_doc_h else pd.DataFrame()
+            h_p = df_h[df_h["DOCUMENTO"] == id_bus]
             
+            # Tarjeta de Datos
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0;'>👤 {get_data(p, ["NOM"])}</h2>
-                <p>ID: {target} | RH: {get_data(p, ["RH"])} | EPS: {get_data(p, ["EPS"])}</p>
+                <h2>👤 {buscar_en_tabla(p, ["NOM"])}</h2>
+                <p>ID: {id_bus} | RH: {buscar_en_tabla(p, ["RH"])} | Edad: {buscar_en_tabla(p, ["EDAD"])}</p>
+                <p>EPS: {buscar_en_tabla(p, ["EPS"])} | Condiciones: {buscar_en_tabla(p, ["CONDICIONES", "ALERGIAS"])}</p>
                 <div class="emergency-box">
-                    <p style="color:#c53030; margin:0;">🚨 <b>EMERGENCIA:</b> {get_data(p, ["CONTAC"])} — <b>Tel:</b> {get_data(p, ["TEL"])}</p>
+                    🚨 <b>EMERGENCIA:</b> {buscar_en_tabla(p, ["NOMBRE CONTACTO"])} - {buscar_en_tabla(p, ["TELEFONO CONTACTO"])}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
-                with st.form("evo_form", clear_on_submit=True):
-                    m_c = st.text_input("1. Motivo"); c1, c2, c3 = st.columns(3)
-                    t_c = c1.text_input("2. Talla (cm)"); p_c = c2.text_input("3. Peso (kg)"); ta_c = c3.text_input("4. TA")
-                    a_c = st.text_area("5. Antecedentes"); med_c = st.text_area("6. Medicamentos")
-                    l_c = st.text_area("7. Laboratorios"); v_c = st.text_input("8. Valoración"); e_c = st.text_area("9. Epicrisis")
-                    if st.form_submit_button("GUARDAR"):
-                        pay = {"entry.2019369477": target, "entry.611862537": m_c, "entry.949747647": t_c, "entry.2091389798": p_c, "entry.882053172": ta_c, "entry.889985940": a_c, "entry.2016051626": med_c, "entry.1088523869": l_c, "entry.1275746503": v_c, "entry.616774918": e_c}
-                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=pay)
-                        st.success("✅ Guardado."); st.cache_data.clear(); st.rerun()
-
-            st.markdown("### 🕒 Línea de Tiempo de Evoluciones")
-            for _, f in h_rows.iloc[::-1].iterrows():
+            # Historial (Evoluciones)
+            st.markdown("### 🕒 Historial de Evoluciones")
+            for _, fila in h_p.iloc[::-1].iterrows():
                 st.markdown(f"""
                 <div class="evolution-card">
-                    <p style="color:#2b6cb0; font-size: 14px;">📅 FECHA: {get_data(f, ["MARCA", "FECHA"])}</p>
-                    <p style='font-size: 18px;'><b>🩺 MOTIVO:</b> {get_data(f, ["MOTIVO"])}</p>
-                    <div style='margin: 12px 0;'>
-                        <span class="vital-sign-tag">📏 Talla: {get_data(f, ["TALLA"])}</span>
-                        <span class="vital-sign-tag">⚖️ Peso: {get_data(f, ["PESO"])}</span>
-                        <span class="vital-sign-tag">💓 TA: {get_data(f, ["PRESION", "TENSION"])}</span>
-                    </div>
-                    <p>📋 <b>VALORACIÓN:</b> {get_data(f, ["VALORACI"])}</p>
-                    <p>🧪 <b>LABORATORIOS:</b> {get_data(f, ["LABORAT"])}</p>
-                    <p>📝 <b>EPICRISIS:</b> {get_data(f, ["EPICRISIS"])}</p>
+                    <b>📅 Registro: {buscar_dato(fila, ["MARCA", "TIME"])}</b><br><br>
+                    🩺 <b>TRATAMIENTO:</b> {buscar_dato(fila, ["TRATAMIENTO"])}<br>
+                    💊 <b>MEDICAMENTOS:</b> {buscar_dato(fila, ["MEDICAMENTO"])}<br>
+                    📋 <b>PROCEDIMIENTOS:</b> {buscar_dato(fila, ["PROCEDIMIENTO"])}
                 </div>
                 """, unsafe_allow_html=True)
-        else: st.warning("⚠️ Paciente no encontrado.")
 
-elif st.session_state.menu == "Base de datos":
-    st.markdown("<h1 style='text-align:center;'>📊 Base de Datos</h1>", unsafe_allow_html=True)
-    if df_h is not None: st.dataframe(df_h, use_container_width=True)
+            with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
+                with st.form("h_form"):
+                    t = st.text_input("Tratamiento")
+                    m = st.text_area("Medicamentos")
+                    pr = st.text_area("Procedimientos")
+                    if st.form_submit_button("GUARDAR"):
+                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", 
+                                      data={"entry.2019369477": id_bus, "entry.611862537": t, "entry.2016051626": m, "entry.1088523869": pr})
+                        st.cache_data.clear(); st.rerun()
+
+elif st.session_state.menu == "Base":
+    st.markdown("### 📊 Base de Datos")
+    st.dataframe(df_p)
