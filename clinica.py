@@ -15,19 +15,16 @@ bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else 
 
 st.markdown(f"""
     <style>
-    /* Fondo y texto general */
     .stApp {{ background-color: {bg_color} !important; color: #000000 !important; }}
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
-    /* Inputs: Fondo blanco y letra negra */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 1px solid #cbd5e1 !important;
     }}
 
-    /* Botones Verde Menta */
     div.stButton > button {{
         background-color: #98FF98 !important; 
         color: #000000 !important; 
@@ -55,7 +52,6 @@ st.markdown(f"""
     .footer {{ 
         position: fixed; left: 0; bottom: 0; width: 100%; 
         text-align: center; color: #555555 !important; font-size: 0.8em; padding: 10px;
-        background-color: rgba(255,255,255,0.5);
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -86,8 +82,6 @@ with st.sidebar:
     if st.button("🔍 Consulta", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
 
 # --- 4. VISTAS ---
-
-# Imagen sobre los títulos en todas las secciones
 st.image(LOGO_URL, width=220)
 
 if st.session_state.menu == "Inicio":
@@ -132,23 +126,36 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- PDF ---
+            # --- PDF CON INFORMACIÓN COMPLETA ---
             pdf = FPDF()
             pdf.add_page()
             try: pdf.image(LOGO_URL, 10, 8, 30)
             except: pass
-            pdf.set_font("Arial", 'B', 14); pdf.cell(0, 10, "Reporte Historia Clinica - Tarjeta Vida QR", ln=True, align='C')
-            pdf.set_font("Arial", '', 10); pdf.cell(0, 7, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
+            pdf.set_font("Arial", 'B', 14); pdf.cell(0, 10, "Historia Clinica Completa - Tarjeta Vida QR", ln=True, align='C')
             pdf.ln(5)
+            
+            # Datos del Paciente en PDF
+            pdf.set_fill_color(230, 230, 230)
+            pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, 'L', 1)
+            pdf.set_font("Arial", '', 9)
+            info_p = f"Nombre: {p.get('NOMBRE')}\nDocumento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\nEPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\nAlertas: {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}\nCONTACTO EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} - Tel: {p.get('TELÉFONO CONTACTO EMERGENCIA')}"
+            pdf.multi_cell(0, 5, info_p); pdf.ln(5)
 
             if not h_p.empty:
+                pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "HISTORIAL DE EVOLUCIONES", 1, 1, 'L', 1)
                 for _, f in h_p.iterrows():
-                    pdf.set_font("Arial", 'B', 9); pdf.cell(0, 7, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L')
-                    pdf.set_font("Arial", '', 9)
-                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nLABS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
-                    pdf.ln(3)
+                    pdf.set_font("Arial", 'B', 9); pdf.cell(0, 6, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L')
+                    pdf.set_font("Arial", '', 8)
+                    txt_evo = (f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\n"
+                               f"VALORACION: {f.get('2. VALORACIÓN')}\n"
+                               f"MEDIDAS: Talla: {f.get('4. TALLA')} | Peso: {f.get('5. PESO')} | TA: {f.get('6. PRESIÓN ARTERIAL')}\n"
+                               f"ANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\n"
+                               f"TRATAMIENTO/MEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\n"
+                               f"LABORATORIOS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\n"
+                               f"EPICRISIS: {f.get('10. EPICRISIS')}")
+                    pdf.multi_cell(0, 4, txt_evo); pdf.ln(2)
 
-            st.download_button("📥 Descargar Reporte PDF", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
+            st.download_button("📥 Descargar Reporte PDF Completo", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
 
             # --- NUEVA EVOLUCIÓN ---
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
