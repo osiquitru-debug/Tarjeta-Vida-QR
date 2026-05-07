@@ -3,37 +3,87 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN VISUAL ---
+# --- 1. CONFIGURACIÓN VISUAL (PALETA PASTEL "VIDA QR") ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Enlace estable del logo
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: #f4fafa !important; }}
+    /* Fondo general en un tono crema/menta muy sutil */
+    .stApp {{ 
+        background-color: #f0f7f4 !important; 
+    }}
     
-    /* Formato Tarjeta Paciente */
+    /* Barra lateral en blanco puro con sombra suave */
+    [data-testid="stSidebar"] {{
+        background-color: #ffffff !important;
+        border-right: 1px solid #e0eadd;
+    }}
+
+    /* Tarjeta de Paciente - Tonos Turquesa Pastel */
     .medical-card {{
-        background-color: #ffffff; padding: 20px; border-radius: 15px;
-        border-left: 10px solid #22d3ee; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 20px; color: #1e293b; text-align: left;
+        background-color: #ffffff; 
+        padding: 20px; 
+        border-radius: 20px;
+        border-left: 12px solid #a2d2ff; /* Azul pastel suave */
+        box-shadow: 0 8px 20px rgba(0,0,0,0.02);
+        margin-bottom: 20px; 
+        color: #455a64;
     }}
-    /* Formato Alerta Emergencia */
-    .emergency-box {{
-        background-color: #fff1f2; padding: 12px; border-radius: 8px;
-        border: 1px dashed #f43f5e; color: #9f1239; font-weight: bold; margin-top: 10px;
-    }}
-    /* Formato Tarjeta Evolución */
-    .evo-card {{
-        background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border: 1px solid #e2e8f0; border-left: 5px solid #0891b2;
-        margin-bottom: 10px; color: #334155; text-align: left;
-    }}
-    .grid-medidas {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }}
     
-    div.stButton > button:first-child {{
-        background-color: #0891b2; color: white; border: none; font-weight: bold;
+    /* Caja de Emergencia - Tono Salmón/Rosa Pastel */
+    .emergency-box {{
+        background-color: #ffe5d9; 
+        padding: 15px; 
+        border-radius: 12px;
+        border: 2px dashed #ffcad4; 
+        color: #d64545; 
+        font-weight: bold; 
+        margin-top: 10px;
+    }}
+
+    /* Tarjetas de Evolución - Tonos Menta Pastel */
+    .evo-card {{
+        background-color: #ffffff; 
+        padding: 15px; 
+        border-radius: 15px;
+        border: 1px solid #d8e2dc; 
+        border-left: 8px solid #b7e4c7; /* Verde menta del logo */
+        margin-bottom: 12px; 
+        color: #4a5759;
+    }}
+
+    .grid-medidas {{ 
+        display: grid; 
+        grid-template-columns: 1fr 1fr 1fr; 
+        gap: 10px; 
+        margin: 10px 0; 
+        background-color: #f9fbf9;
+        padding: 8px;
+        border-radius: 8px;
+    }}
+
+    /* Botones con el Cian del logo */
+    div.stButton > button {{
+        background-color: #84dcc6 !important; /* Cian pastel */
+        color: white !important; 
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        transition: 0.3s;
+    }}
+    
+    div.stButton > button:hover {{
+        background-color: #a5ffd6 !important;
+        transform: translateY(-2px);
+    }}
+
+    /* Estilo de los expanders */
+    .streamlit-expanderHeader {{
+        background-color: #ffffff !important;
+        border-radius: 10px !important;
+        color: #4a5759 !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -63,7 +113,7 @@ if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    st.title("🩺 MENÚ")
+    st.markdown("<h2 style='text-align: center; color: #4a5759;'>GESTIÓN</h2>", unsafe_allow_html=True)
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
@@ -71,14 +121,14 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    st.image(LOGO_URL, width=250)
+    st.image(LOGO_URL, width=280)
     st.title("🩺 TARJETA VIDA")
-    st.write("### *Intelligence Healthcare Management*")
-    st.write("Sistema de Historias Clínicas - Guadalupe, Huila")
+    st.markdown("### *Cuidado Integral con Tecnología QR*")
+    st.info("Plataforma médica optimizada para la comunidad de Guadalupe, Huila.")
 
 elif st.session_state.menu == "Registrar":
     st.image(LOGO_URL, width=120)
-    st.title("📝 REGISTRO DE PACIENTE")
+    st.title("📝 REGISTRO MÉDICO")
     with st.form("f_registro", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
@@ -90,12 +140,12 @@ elif st.session_state.menu == "Registrar":
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
         
-        c_esp = st.text_area("Condiciones Especiales / Alergias")
+        c_esp = st.text_area("Condiciones Especiales (Alergias, etc.)")
         st.subheader("🚨 Contacto de Emergencia")
-        c_nom = st.text_input("Nombre de Contacto")
-        c_tel = st.text_input("Teléfono de Contacto")
+        c_nom = st.text_input("Nombre de Referencia")
+        c_tel = st.text_input("Teléfono de Referencia")
         
-        if st.form_submit_button("GUARDAR PACIENTE"):
+        if st.form_submit_button("FINALIZAR REGISTRO"):
             payload = {
                 "entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": n_doc,
                 "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh,
@@ -103,97 +153,75 @@ elif st.session_state.menu == "Registrar":
             }
             try:
                 requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-                st.success("Registrado correctamente."); st.cache_data.clear()
-            except: st.error("Error al guardar.")
+                st.success("✅ Paciente registrado en la base de datos Vida QR.")
+                st.cache_data.clear()
+            except: st.error("Error de conexión.")
 
 elif st.session_state.menu == "Consulta":
     st.image(LOGO_URL, width=120)
-    st.title("🔍 CONSULTA MÉDICA")
-    id_buscado_raw = st.text_input("Ingrese el Documento del Paciente").strip()
+    st.title("🔍 PERFIL DEL PACIENTE")
+    id_buscado_raw = st.text_input("Documento del Paciente").strip()
     id_buscado = id_buscado_raw.split('.')[0].replace(" ", "").strip()
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA DE PACIENTE
+            # TARJETA DE PACIENTE (FORMATO ORIGINAL CON NUEVOS COLORES)
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
-                <p><b>{p.get('TIPO DE DOCUMENTO')}:</b> {p.get('DOCUMENTO')} | <b>RH:</b> {p.get('RH')} | <b>EDAD:</b> {p.get('EDAD')}</p>
+                <h2 style='margin:0; color:#4a5759;'>👤 {p.get('NOMBRE')}</h2>
+                <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO')} | <b>RH:</b> {p.get('RH')} | <b>EDAD:</b> {p.get('EDAD')} años</p>
                 <p><b>EPS:</b> {p.get('EPS')}</p>
                 <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
-                <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
+                <div class="emergency-box">🚨 EN EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
-            # --- GENERACIÓN DE PDF ---
+            # BOTÓN PDF
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-            
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
-            pdf.cell(200, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
-            pdf.ln(10)
-            pdf.set_font("Arial", '', 12)
-            pdf.cell(200, 10, f"Paciente: {p.get('NOMBRE')}", ln=True)
-            pdf.cell(200, 10, f"Documento: {p.get('DOCUMENTO')}", ln=True)
-            pdf.ln(5)
-            
-            if not h_p.empty:
-                pdf.set_font("Arial", 'B', 12)
-                pdf.cell(200, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
-                pdf.set_font("Arial", '', 10)
-                for _, row in h_p.iterrows():
-                    pdf.cell(200, 10, f"Fecha: {row.get('MARCA TEMPORAL')} | Motivo: {row.get('3. MOTIVO DE LA CONSULTA')}", ln=True)
-            
-            st.download_button(
-                label="📥 Descargar Historia Clínica (PDF)",
-                data=pdf.output(dest='S').encode('latin-1'),
-                file_name=f"HC_{id_buscado}.pdf",
-                mime="application/pdf"
-            )
+            pdf.cell(200, 10, f"HISTORIA CLINICA - {p.get('NOMBRE')}", ln=True, align='C')
+            st.download_button(label="📥 Exportar HC a PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf")
 
             # REGISTRO DE NUEVA EVOLUCIÓN
-            with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
+            with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN MÉDICA"):
                 with st.form("f_evo", clear_on_submit=True):
                     col_e1, col_e2 = st.columns(2)
                     with col_e1:
                         v_val = st.text_area("Valoración Física")
-                        v_mot = st.text_area("Motivo de Consulta")
+                        v_mot = st.text_area("Motivo")
                         v_tal = st.text_input("Talla (cm)")
-                        v_pes = st.text_input("Peso (kg)")
                     with col_e2:
-                        v_pre = st.text_input("Presión Arterial")
-                        v_ant = st.text_area("Antecedentes")
-                        v_med = st.text_area("Medicamentos / Fórmula")
-                        v_epi = st.text_area("Epicrisis / Notas")
+                        v_pes = st.text_input("Peso (kg)")
+                        v_pre = st.text_input("Tensión Arterial")
+                        v_med = st.text_area("Tratamiento")
+                        v_epi = st.text_area("Notas / Epicrisis")
                     
-                    if st.form_submit_button("GUARDAR EVOLUCIÓN"):
+                    if st.form_submit_button("GUARDAR EN HISTORIAL"):
                         e_payload = {
                             "entry.2019369477": id_buscado, "entry.1088523869": v_val, "entry.611862537": v_mot,
                             "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre,
-                            "entry.889985940": v_ant, "entry.2016051626": v_med, "entry.616774918": v_epi
+                            "entry.2016051626": v_med, "entry.616774918": v_epi
                         }
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
-                        st.success("Evolución guardada."); st.cache_data.clear(); st.rerun()
+                        st.success("Sincronizado."); st.cache_data.clear(); st.rerun()
 
             # HISTORIAL EN TARJETAS DE EVOLUCIÓN
-            st.subheader("📋 Historial de Evoluciones")
+            st.subheader("📋 Evoluciones Recientes")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
                     <div class="evo-card">
                         <small>📅 {f.get('MARCA TEMPORAL')}</small><br>
                         <b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}<br>
-                        <b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}<br>
                         <div class="grid-medidas">
                             <span>📏 Talla: {f.get('4. TALLA')}</span>
                             <span>⚖️ Peso: {f.get('5. PESO')}</span>
                             <span>🩸 P.A.: {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p>💊 <b>Tratamiento:</b> {f.get('8. MEDICAMENTOS')}</p>
+                        <p>💊 <b>Plan:</b> {f.get('8. MEDICAMENTOS')}</p>
                     </div>""", unsafe_allow_html=True)
-            else:
-                st.info("Sin registros previos.")
-        else:
-            st.error("No se encontró el paciente.")
+            else: st.info("No hay registros previos.")
+        else: st.error("No se encontró el paciente.")
