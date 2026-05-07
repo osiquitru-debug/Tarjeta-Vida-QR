@@ -4,41 +4,36 @@ import requests
 from fpdf import FPDF
 import io
 
-# --- 1. CONFIGURACIÓN Y ESTILO ---
-st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
+# --- 1. CONFIGURACIÓN ---
+st.set_page_config(page_title="Tarjeta Vida | Historial Médico", layout="centered", page_icon="🩺")
 
+# Estilos CSS
 st.markdown("""
     <style>
     .stApp { background-color: #f0f7f4 !important; }
-    [data-testid="stSidebar"] { background-color: #ffffff !important; border-right: 1px solid #e0e0e0; }
     .medical-card {
         background-color: #ffffff; padding: 20px; border-radius: 15px; 
         border-left: 10px solid #4fd1c5; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         margin-bottom: 20px; color: #000;
     }
-    .emergency-box { 
-        background-color: #fff5f5; padding: 10px; border-radius: 8px; 
-        border: 1px dashed #f56565; color: #c53030; font-weight: bold;
-    }
     .evo-card {
         background-color: #ffffff; padding: 15px; border-radius: 10px;
         border: 1px solid #cbd5e1; border-left: 5px solid #63b3ed; margin-bottom: 10px;
     }
-    h1, h2, h3, label, p { color: #1a202c !important; }
+    .emergency-box { 
+        background-color: #fff5f5; padding: 10px; border-radius: 8px; 
+        border: 1px dashed #f56565; color: #c53030; font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. RECURSOS Y URLs ---
-ID_LOGO = "1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
-URL_LOGO = f"https://lh3.googleusercontent.com/d/{ID_LOGO}"
+# --- 2. URLs ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
-
-# URLs de envío (Terminadas en formResponse)
 URL_FORM_PACIENTES = "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse"
 URL_FORM_HISTORIAL = "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse"
 
-# --- 3. FUNCIONES CORE ---
-@st.cache_data(ttl=5)
+# --- 3. CARGA DE DATOS ---
+@st.cache_data(ttl=2)
 def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
@@ -52,153 +47,123 @@ def cargar_datos():
     except:
         return None, None
 
+# --- 4. GENERACIÓN DE PDF ---
 def generar_pdf(paciente, historial):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "REPORTE MEDICO - TARJETA VIDA", ln=True, align='C')
+    pdf.cell(0, 10, "HISTORIA CLINICA - TARJETA VIDA", ln=True, align='C')
     pdf.ln(5)
     
-    # Datos Paciente
+    # Datos del Paciente
     pdf.set_fill_color(230, 245, 240)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, f" PACIENTE: {paciente.get('NOMBRE', 'N/R')}", ln=True, fill=True)
-    pdf.set_font("Arial", '', 11)
-    info = (f"Documento: {paciente.get('DOCUMENTO', 'N/R')} | RH: {paciente.get('RH', 'N/R')}\n"
-            f"Edad: {paciente.get('EDAD', 'N/R')} | EPS: {paciente.get('EPS', 'N/R')}\n"
-            f"Condiciones: {paciente.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)', 'Ninguna')}")
-    pdf.multi_cell(0, 8, info.encode('latin-1', 'replace').decode('latin-1'))
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, f" PACIENTE: {paciente.get('NOMBRE', 'N/R')}", ln=True, fill=True)
+    pdf.set_font("Arial", '', 10)
+    pdf.multi_cell(0, 7, txt=f"Documento: {paciente.get('DOCUMENTO')}\nRH: {paciente.get('RH')}\nEPS: {paciente.get('EPS')}")
     
-    # Evoluciones
+    # Evoluciones (Basado solo en los campos del formulario)
     pdf.ln(5)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, " HISTORIAL DE EVOLUCIONES", ln=True, fill=True)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, " REGISTROS DE EVOLUCION", ln=True, fill=True)
     
     for _, fila in historial.iterrows():
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(0, 8, f"FECHA: {fila.get('MARCA TEMPORAL', 'S/F')}", ln=True)
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(0, 7, f"FECHA: {fila.get('MARCA TEMPORAL', 'S/F')}", ln=True)
         pdf.set_font("Arial", '', 9)
-        evo_txt = (f"Diagnóstico: {fila.get('DIAGNOSTICO', 'N/R')}\n"
-                   f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}\n"
-                   f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}")
-        pdf.multi_cell(0, 5, evo_txt.encode('latin-1', 'replace').decode('latin-1'))
+        # Solo campos del Sheet que coinciden con el form
+        texto = (f"Diagnóstico: {fila.get('DIAGNOSTICO', 'N/R')}\n"
+                 f"Tratamiento: {fila.get('TRATAMIENTO', 'N/R')}\n"
+                 f"Medicamentos: {fila.get('MEDICAMENTOS', 'N/R')}\n"
+                 f"Evolución: {fila.get('EVOLUCION CLINICA', 'N/R')}")
+        pdf.multi_cell(0, 5, texto.encode('latin-1', 'replace').decode('latin-1'))
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(2)
     return pdf.output(dest='S')
 
-# --- 4. INTERFAZ ---
+# --- 5. LÓGICA DE INTERFAZ ---
 df_p, df_h = cargar_datos()
 
-if 'menu' not in st.session_state: st.session_state.menu = "Registrar"
+st.title("🩺 Gestión de Evoluciones")
 
-with st.sidebar:
-    st.image(URL_LOGO, width=150)
-    st.markdown("### PANEL MÉDICO")
-    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
-    if st.button("🔍 Consulta / Evolución"): st.session_state.menu = "Consulta"
+id_bus = st.text_input("Buscar Paciente (Documento)").strip()
 
-# SECCIÓN: REGISTRO (Basado en el primer link)
-if st.session_state.menu == "Registrar":
-    st.title("📝 Registro de Paciente")
-    with st.form("form_registro", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nombre = st.text_input("Nombre Completo")
-            cedula = st.text_input("Documento de Identidad")
-            edad = st.text_input("Edad")
-        with col2:
-            rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-            eps = st.text_input("EPS")
-            cel = st.text_input("Teléfono")
-        
-        condiciones = st.text_area("Condiciones Especiales / Alergias")
-        e_nom = st.text_input("Nombre de contacto emergencia")
-        e_tel = st.text_input("Teléfono de contacto emergencia")
-        
-        if st.form_submit_button("GUARDAR PACIENTE"):
-            if nombre and cedula:
-                payload_p = {
-                    "entry.346175428": nombre,
-                    "entry.1650757004": "Web_App",
-                    "entry.1302424820": cedula.strip(),
-                    "entry.1801154005": edad,
-                    "entry.1043165037": cel,
-                    "entry.1172011247": eps,
-                    "entry.162368130": rh,
-                    "entry.346363": condiciones,
-                    "entry.1892763134": e_nom,
-                    "entry.2011749615": e_tel
-                }
-                requests.post(URL_FORM_PACIENTES, data=payload_p)
-                st.success(f"✅ Paciente {nombre} registrado.")
-                st.cache_data.clear()
-
-# SECCIÓN: CONSULTA (Basado en el segundo link - 10 campos)
-elif st.session_state.menu == "Consulta":
-    st.title("🔍 Consulta y Evolución")
-    id_bus = st.text_input("Ingrese Documento del Paciente").strip()
+if id_bus and df_p is not None:
+    paciente_rows = df_p[df_p["DOCUMENTO"] == id_bus]
     
-    if id_bus and df_p is not None:
-        paciente = df_p[df_p["DOCUMENTO"] == id_bus]
-        if not paciente.empty:
-            p = paciente.iloc[0]
-            h_p = df_h[df_h["DOCUMENTO"] == id_bus]
-            
-            st.markdown(f"""
-            <div class="medical-card">
-                <h2 style='margin:0;'>👤 {p.get('NOMBRE', 'N/A')}</h2>
-                <p><b>ID:</b> {id_bus} | <b>RH:</b> {p.get('RH', 'N/A')} | <b>Edad:</b> {p.get('EDAD', 'N/A')}</p>
-                <div class="emergency-box">
-                    🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA', 'S/D')} - {p.get('TELEFONO CONTACTO EMERGENCIA', 'S/D')}
-                </div>
+    if not paciente_rows.empty:
+        p = paciente_rows.iloc[0]
+        # Filtrar historial del paciente
+        h_p = df_h[df_h["DOCUMENTO"] == id_bus] if df_h is not None else pd.DataFrame()
+        
+        # Tarjeta resumen paciente
+        st.markdown(f"""
+        <div class="medical-card">
+            <h3 style='margin:0;'>👤 {p.get('NOMBRE', 'N/A')}</h3>
+            <p style='margin:0;'>ID: {id_bus} | RH: {p.get('RH', 'N/A')} | EPS: {p.get('EPS', 'N/A')}</p>
+            <div class="emergency-box">
+                🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA', 'S/D')} - {p.get('TELEFONO CONTACTO EMERGENCIA', 'S/D')}
             </div>
-            """, unsafe_allow_html=True)
-            
-            st.download_button("🖨️ Descargar Historia Clínica", data=generar_pdf(p, h_p), file_name=f"HC_{id_bus}.pdf")
-            
-            with st.expander("✍️ REGISTRAR NUEVA ATENCIÓN"):
-                with st.form("evo_form", clear_on_submit=True):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        tratamiento = st.text_input("Tratamiento")
-                        procedimientos = st.text_area("Procedimientos")
-                        evolucion = st.text_area("Evolución Clínica")
-                        notas = st.text_area("Notas de Enfermería")
-                        obs = st.text_input("Observaciones")
-                    with c2:
-                        medicamentos = st.text_area("Medicamentos")
-                        diagnostico = st.text_area("Diagnóstico")
-                        recomendaciones = st.text_area("Recomendaciones")
-                        examenes = st.text_input("Exámenes")
-                        otro = st.text_input("Dato Adicional") # entry.616774918 aprox
-                    
-                    if st.form_submit_button("💾 GUARDAR EVOLUCIÓN"):
-                        payload_h = {
-                            "entry.2019369477": id_bus,
-                            "entry.1088523869": procedimientos,
-                            "entry.611862537": tratamiento,
-                            "entry.1275746503": evolucion,
-                            "entry.949747647": notas,
-                            "entry.2091389798": obs,
-                            "entry.889985940": diagnostico,
-                            "entry.2016051626": medicamentos,
-                            "entry.882053172": recomendaciones,
-                            "entry.616774918": examenes
-                        }
-                        requests.post(URL_FORM_HISTORIAL, data=payload_h)
-                        st.success("✅ Evolución guardada.")
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.download_button("📥 Descargar PDF", data=generar_pdf(p, h_p), file_name=f"HC_{id_bus}.pdf")
+
+        # Formulario de Evolución (Campos exactos del link proporcionado)
+        with st.expander("📝 REGISTRAR NUEVA ENTRADA"):
+            with st.form("form_evo", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    # Basado en tus entries del link
+                    tratamiento = st.text_input("Tratamiento (entry.611862537)")
+                    procedimientos = st.text_area("Procedimientos (entry.1088523869)")
+                    evolucion_clinica = st.text_area("Evolución Clínica (entry.1275746503)")
+                    notas_enfermeria = st.text_area("Notas de Enfermería (entry.949747647)")
+                    observaciones = st.text_input("Observaciones (entry.2091389798)")
+                with col2:
+                    diagnostico = st.text_area("Diagnóstico (entry.889985940)")
+                    medicamentos = st.text_area("Medicamentos (entry.2016051626)")
+                    recomendaciones = st.text_area("Recomendaciones (entry.882053172)")
+                    examenes = st.text_input("Exámenes (entry.616774918)")
+                    adicional = st.text_input("Dato Adicional (entry.2019369477)", value=id_bus, disabled=True)
+
+                if st.form_submit_button("GUARDAR EN HISTORIAL"):
+                    payload = {
+                        "entry.2019369477": id_bus,
+                        "entry.1088523869": procedimientos,
+                        "entry.611862537": tratamiento,
+                        "entry.1275746503": evolucion_clinica,
+                        "entry.949747647": notas_enfermeria,
+                        "entry.2091389798": observaciones,
+                        "entry.889985940": diagnostico,
+                        "entry.2016051626": medicamentos,
+                        "entry.882053172": recomendaciones,
+                        "entry.616774918": examenes
+                    }
+                    try:
+                        requests.post(URL_FORM_HISTORIAL, data=payload)
+                        st.success("✅ Datos enviados. Actualizando...")
                         st.cache_data.clear()
                         st.rerun()
+                    except:
+                        st.error("Error de conexión.")
 
-            st.subheader("📋 Antecedentes Clínicos")
+        # Visualización de Evoluciones (Tarjetas que coinciden con el Sheet)
+        st.subheader("📋 Evoluciones Registradas")
+        if not h_p.empty:
             for _, fila in h_p.sort_index(ascending=False).iterrows():
-                st.markdown(f"""
-                <div class="evo-card">
-                    <small>📅 {fila.get('MARCA TEMPORAL', 'S/F')}</small><br>
-                    <b>Diagnóstico:</b> {fila.get('DIAGNOSTICO', 'N/R')}<br>
-                    <b>Tratamiento:</b> {fila.get('TRATAMIENTO', 'N/R')}<br>
-                    <b>Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/R')}
-                </div>
-                """, unsafe_allow_html=True)
+                with st.container():
+                    st.markdown(f"""
+                    <div class="evo-card">
+                        <small><b>📅 Fecha: {fila.get('MARCA TEMPORAL', 'S/F')}</b></small><br>
+                        <b>🩺 Diagnóstico:</b> {fila.get('DIAGNOSTICO', 'N/R')}<br>
+                        <b>💊 Medicamentos:</b> {fila.get('MEDICAMENTOS', 'N/R')}<br>
+                        <b>📋 Evolución:</b> {fila.get('EVOLUCION CLINICA', 'N/R')}<br>
+                        <hr style='margin:5px 0; border:0; border-top:1px solid #eee;'>
+                        <small>📝 <b>Obs:</b> {fila.get('OBSERVACIONES', 'N/R')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
-            st.warning("Paciente no encontrado.")
+            st.info("No hay evoluciones previas para este paciente.")
+    else:
+        st.warning("Paciente no encontrado.")
