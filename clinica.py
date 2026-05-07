@@ -15,16 +15,27 @@ bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else 
 
 st.markdown(f"""
     <style>
+    /* Fondo y texto general */
     .stApp {{ background-color: {bg_color} !important; color: #000000 !important; }}
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
+    /* FLECHAS BLANCAS PARA EL MENÚ (Sidebar Toggle) */
+    button[data-testid="sidebar-button-nav"] svg, 
+    button[aria-label="Collapse sidebar"] svg, 
+    button[aria-label="Expand sidebar"] svg {{
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }}
+
+    /* Inputs: Fondo blanco y letra negra */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 1px solid #cbd5e1 !important;
     }}
 
+    /* Botones Verde Menta */
     div.stButton > button {{
         background-color: #98FF98 !important; 
         color: #000000 !important; 
@@ -115,7 +126,6 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
-            # --- LÓGICA DE BÚSQUEDA ROBUSTA PARA EMERGENCIA ---
             def obtener_dato(df_row, palabras_clave):
                 for col in df_row.index:
                     if all(palabra in col for palabra in palabras_clave):
@@ -138,7 +148,7 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- PDF CON INFORMACIÓN COMPLETA ---
+            # --- PDF COMPLETO ---
             pdf = FPDF()
             pdf.add_page()
             try: pdf.image(LOGO_URL, 10, 8, 30)
