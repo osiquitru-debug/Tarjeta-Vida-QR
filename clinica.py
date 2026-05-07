@@ -1,111 +1,74 @@
 import streamlit as st
 import pandas as pd
 import requests
-from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Tarjeta Vida", layout="centered")
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Diagnóstico Tarjeta Vida", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #f0f7f4 !important; }
-    input, textarea, select { background-color: #ffffff !important; color: #000000 !important; }
-    h1, h2, h3, label { text-align: center; color: #1a202c; }
-    .medical-card {
-        background-color: #ffffff; padding: 20px; border-radius: 15px;
-        border-left: 10px solid #4fd1c5; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 20px; text-align: left;
-    }
-    .evo-card {
-        background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border-left: 5px solid #63b3ed; border: 1px solid #e2e8f0; margin-bottom: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. CARGA DE DATOS (MÉTODO POSICIONAL) ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
 
 @st.cache_data(ttl=1)
-def cargar_tablas():
+def cargar_y_analizar():
     try:
-        # Leemos todo como texto puro
-        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("No registra")
-        h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("No registra")
+        # 1. Leemos la hoja de pacientes
+        df = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("")
         
-        # Limpieza de la columna ID (Asumimos que es la columna índice 1)
-        p['KEY'] = p.iloc[:, 1].astype(str).str.split('.').str[0].str.strip()
-        h['KEY'] = h.iloc[:, 1].astype(str).str.split('.').str[0].str.strip()
+        # 2. LIMPIEZA AGRESIVA DE IDs
+        # Buscamos en todas las columnas cuál parece ser la de identificación
+        # Creamos una versión "limpia" de cada columna para buscar
+        for col in df.columns:
+            df[f"CLEAN_{col}"] = df[col].astype(str).str.split('.').str[0].str.replace(" ", "").strip()
         
-        return p, h
-    except:
-        return None, None
+        return df
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return None
 
-df_p, df_h = cargar_tablas()
+st.title("🩺 Buscador Ultra-Robusto")
 
-# --- 3. NAVEGACIÓN ---
-if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
+df_p = cargar_y_analizar()
 
-with st.sidebar:
-    st.title("MENÚ")
-    if st.button("Inicio"): st.session_state.menu = "Inicio"
-    if st.button("Registrar"): st.session_state.menu = "Registrar"
-    if st.button("Consulta"): st.session_state.menu = "Consulta"
+if df_p is not None:
+    # --- BUSCADOR ---
+    busqueda = st.text_input("Ingresa el documento a buscar (sin puntos ni espacios)").strip()
 
-# --- 4. VISTAS ---
-if st.session_state.menu == "Inicio":
-    st.title("SISTEMA MÉDICO")
-    st.write("Bienvenido al sistema de gestión.")
-
-elif st.session_state.menu == "Registrar":
-    st.title("REGISTRO")
-    with st.form("reg"):
-        n = st.text_input("Nombre"); d = st.text_input("Documento")
-        if st.form_submit_button("Guardar"):
-            payload = {"entry.346175428": n, "entry.1302424820": d} # Ajusta según tus IDs de Form
-            requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-            st.success("Guardado"); st.cache_data.clear()
-
-elif st.session_state.menu == "Consulta":
-    st.title("CONSULTA")
-    id_buscar = st.text_input("Documento").strip()
-    
-    if id_buscar and df_p is not None:
-        # Buscamos en la columna KEY que creamos
-        p_row = df_p[df_p['KEY'] == id_buscar]
+    if busqueda:
+        # Buscamos en TODAS las columnas limpias por si el ID se movió de lugar
+        resultado = pd.DataFrame()
+        columna_donde_se_hallo = ""
         
-        if not p_row.empty:
-            p = p_row.iloc[0]
-            # USAMOS ILOC PARA EVITAR ERRORES DE NOMBRE DE COLUMNA
+        for col in [c for c in df_p.columns if c.startswith("CLEAN_")]:
+            match = df_p[df_p[col] == busqueda]
+            if not match.empty:
+                resultado = match
+                columna_donde_se_hallo = col.replace("CLEAN_", "")
+                break
+        
+        if not resultado.empty:
+            p = resultado.iloc[0]
+            st.success(f"¡PACIENTE ENCONTRADO! (Encontrado en la columna: {columna_donde_se_hallo})")
+            
+            # Mostrar datos en tarjetas
             st.markdown(f"""
-            <div class="medical-card">
-                <h2>PACIENTE: {p.iloc[2]}</h2>
-                <p><b>Documento:</b> {p.iloc[1]} | <b>RH:</b> {p.iloc[6]} | <b>EPS:</b> {p.iloc[5]}</p>
-            </div>""", unsafe_allow_html=True)
-            
-            # Formulario de Evolución
-            with st.expander("Registrar Evolución"):
-                with st.form("evo"):
-                    v1 = st.text_area("Valoración"); v2 = st.text_area("Motivo")
-                    if st.form_submit_button("Guardar Evolución"):
-                        # ... lógica de guardado de form historial ...
-                        st.success("Enviado"); st.cache_data.clear()
-
-            st.subheader("HISTORIAL")
-            h_p = df_h[df_h['KEY'] == id_buscar].sort_index(ascending=False)
-            
-            if not h_p.empty:
-                for _, f in h_p.iterrows():
-                    # Aquí mapeamos por posición exacta del historial (0=Fecha, 2=Val, 3=Motivo, etc)
-                    st.markdown(f"""
-                    <div class="evo-card">
-                        <small>Fecha: {f.iloc[0]}</small><br>
-                        <b>Valoración:</b> {f.iloc[2]}<br>
-                        <b>Motivo:</b> {f.iloc[3]}<br>
-                        <b>Talla:</b> {f.iloc[4]} | <b>Peso:</b> {f.iloc[5]} | <b>Presión:</b> {f.iloc[6]}<br>
-                        <b>Medicamentos:</b> {f.iloc[8]}
-                    </div>""", unsafe_allow_html=True)
-            else:
-                st.info("Sin historial.")
+            <div style="background-color: white; padding: 20px; border-radius: 10px; border-left: 10px solid #4fd1c5; color: black;">
+                <h2>👤 {p.iloc[2]}</h2>
+                <p><b>Documento:</b> {p.iloc[1]}</p>
+                <p><b>EPS:</b> {p.iloc[5]} | <b>RH:</b> {p.iloc[6]}</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.error(f"No se encontró el ID: {id_buscar}")
+            st.error(f"No se encontró el ID '{busqueda}' en ninguna columna.")
+            
+            # --- SECCIÓN DE DIAGNÓSTICO (Solo aparece si falla) ---
+            with st.expander("🛠️ Ver por qué falló (Análisis de datos real)"):
+                st.write("Esta es la tabla que está llegando desde Google Sheets. Verifica que tu ID aparezca aquí:")
+                # Mostramos solo las primeras columnas originales para diagnóstico
+                columnas_reales = [c for c in df_p.columns if not c.startswith("CLEAN_")]
+                st.dataframe(df_p[columnas_reales])
+                
+                st.write("IDs que el sistema ha procesado y está listo para reconocer:")
+                # Mostramos los IDs que el sistema "entiende"
+                if len(df_p.columns) > 1:
+                    st.write(df_p.iloc[:, [1, -1]].head()) # Muestra col 2 y su versión limpia
+else:
+    st.warning("No se pudo cargar la base de datos. Revisa el link del Google Sheet.")
