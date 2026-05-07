@@ -15,10 +15,9 @@ bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else 
 
 st.markdown(f"""
     <style>
+    /* Fondo y texto general */
     .stApp {{ background-color: {bg_color} !important; color: #000000 !important; }}
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
-    
-    /* Textos en negro absoluto */
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
     /* Inputs: Fondo blanco y letra negra */
@@ -32,28 +31,25 @@ st.markdown(f"""
     div.stButton > button {{
         background-color: #98FF98 !important; 
         color: #000000 !important; 
-        border-radius: 12px !important; 
+        border-radius: 10px !important; 
         font-weight: bold !important; 
         border: 1px solid #7ed37e !important;
-        height: 3em !important;
-        width: 100% !important;
     }}
-
-    /* Tarjetas */
+    
     .medical-card {{
-        background-color: #ffffff; padding: 25px; border-radius: 15px;
-        border-left: 10px solid #a2d2ff; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px;
+        background-color: #ffffff; padding: 20px; border-radius: 15px;
+        border-left: 10px solid #a2d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;
     }}
     .emergency-box {{
-        background-color: #ffe5d9; padding: 15px; border-radius: 10px;
-        border: 2px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 15px;
+        background-color: #ffe5d9; padding: 12px; border-radius: 8px;
+        border: 1px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
     }}
     .evo-card {{
-        background-color: #ffffff; padding: 18px; border-radius: 12px;
-        border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7; margin-bottom: 15px;
+        background-color: #ffffff; padding: 15px; border-radius: 10px;
+        border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7; margin-bottom: 12px;
     }}
     .grid-medidas {{ 
-        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; padding: 10px 0;
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; padding: 5px 0;
         border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
     }}
     </style>
@@ -67,9 +63,10 @@ def cargar_datos():
     try:
         p = pd.read_csv(f"{URL_CSV}&sheet=pacientes", dtype=str).fillna("No registra")
         h = pd.read_csv(f"{URL_CSV}&sheet=historial", dtype=str).fillna("No registra")
-        # Normalizar para búsqueda robusta
+        # Normalización de columnas a mayúsculas para mapeo seguro
         p.columns = [str(c).strip().upper() for c in p.columns]
         h.columns = [str(c).strip().upper() for c in h.columns]
+        
         limpiar = lambda x: str(x).split('.')[0].replace(" ", "").strip()
         p['ID_KEY'] = p['DOCUMENTO'].apply(limpiar)
         h['ID_KEY'] = h['1. DOCUMENTO'].apply(limpiar)
@@ -81,114 +78,99 @@ df_p, df_h = cargar_datos()
 # --- 3. NAVEGACIÓN ---
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    st.markdown("---")
-    if st.button("🏠 Inicio"): st.session_state.menu = "Inicio"; st.rerun()
-    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"; st.rerun()
-    if st.button("🔍 Consulta Médica"): st.session_state.menu = "Consulta"; st.rerun()
+    if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"; st.rerun()
+    if st.button("📝 Registrar", use_container_width=True): st.session_state.menu = "Registrar"; st.rerun()
+    if st.button("🔍 Consulta", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
 
 # --- 4. VISTAS ---
-# IMAGEN SOBRE EL TÍTULO EN TODAS LAS VISTAS
-st.image(LOGO_URL, width=180)
+
+# Mostrar Logo siempre arriba de los títulos
+st.image(LOGO_URL, width=250)
 
 if st.session_state.menu == "Inicio":
     st.title("🩺 Tarjeta Vida QR")
     st.markdown("### *Tu Información de Salud Siempre Contigo*")
-    st.info("Bienvenido al sistema de gestión clínica offline/online.")
 
 elif st.session_state.menu == "Registrar":
     st.title("📝 REGISTRO DE PACIENTE")
-    with st.form("f_registro", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nom = st.text_input("Nombre Completo")
-            tdoc = st.selectbox("Tipo Documento", ["CC", "TI", "CE", "RC"])
-            ndoc = st.text_input("Número de Documento")
-        with col2:
-            edad = st.text_input("Edad")
-            eps = st.text_input("EPS")
-            rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        
-        alertas = st.text_area("Condiciones Especiales (Alergias, Enfermedades de base)")
-        st.subheader("🚨 Contacto de Emergencia")
-        c_nom = st.text_input("Nombre de Referencia")
-        c_tel = st.text_input("Teléfono de Referencia")
-        
+    with st.form("f_reg", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            nom = st.text_input("Nombre Completo"); tdoc = st.selectbox("Tipo Doc", ["CC", "TI", "CE", "RC"]); ndoc = st.text_input("Documento")
+            cel = st.text_input("Celular")
+        with c2:
+            ed = st.text_input("Edad"); ep = st.text_input("EPS"); rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        alert = st.text_area("Condiciones Especiales (Alergias, Enfermedades de base)")
+        st.subheader("🚨 Emergencia")
+        enom = st.text_input("Nombre Contacto"); etel = st.text_input("Teléfono Contacto")
         if st.form_submit_button("GUARDAR PACIENTE"):
-            # Mapeo según tu Google Form de Pacientes
-            payload = {
-                "entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc,
-                "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh,
-                "entry.1892763134": c_nom, "entry.2011749615": c_tel
-            }
+            payload = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh, "entry.1892763134": enom, "entry.2011749615": etel, "entry.celular_id": cel}
             requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-            st.success("✅ Paciente registrado exitosamente."); st.cache_data.clear()
+            st.success("✅ Guardado."); st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA CLÍNICA")
-    id_buscado = st.text_input("Ingrese Documento del Paciente").strip().split('.')[0].replace(" ", "")
+    id_buscado = st.text_input("Ingrese Documento para Consultar").strip().split('.')[0].replace(" ", "")
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA COMPLETA
+            # TARJETA PACIENTE COMPLETA
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
-                <p style='font-size:1.1em;'><b>ID:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')} años | <b>RH:</b> {p.get('RH')}</p>
-                <p><b>EPS:</b> {p.get('EPS')}</p>
-                <p><b>⚠️ ALERTAS CRÍTICAS:</b><br>{p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
-                <div class="emergency-box">🚨 CONTACTO DE EMERGENCIA:<br>{p.get('NOMBRE CONTACTO EMERGENCIA')} — 📞 {p.get('TELÉFONO CONTACTO EMERGENCIA')}</div>
+                <p><b>ID:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')} | <b>RH:</b> {p.get('RH')}</p>
+                <p><b>EPS:</b> {p.get('EPS')} | <b>CEL:</b> {p.get('CELULAR')}</p>
+                <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
+                <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELÉFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- PDF CON LOGO ARRIBA ---
+            # --- GENERACIÓN PDF ---
             pdf = FPDF()
             pdf.add_page()
-            try: pdf.image(LOGO_URL, 10, 8, 33)
+            try: pdf.image(LOGO_URL, 10, 8, 30)
             except: pass
-            pdf.set_font("Arial", 'B', 16); pdf.cell(0, 10, "Reporte Tarjeta Vida QR", ln=True, align='C')
-            pdf.ln(15)
-            
-            pdf.set_fill_color(240, 240, 240)
-            pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, "INFORMACION GENERAL", 1, 1, 'L', 1)
-            pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(0, 7, f"Paciente: {p.get('NOMBRE')}\nDocumento: {p.get('DOCUMENTO')} | RH: {p.get('RH')}\nAlertas: {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}")
+            pdf.set_font("Arial", 'B', 14); pdf.cell(0, 10, "Tarjeta Vida QR - Historia Clinica", ln=True, align='C')
+            pdf.set_font("Arial", '', 10); pdf.cell(0, 7, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
             pdf.ln(5)
 
             if not h_p.empty:
-                pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, "HISTORIAL DE EVOLUCIONES", 1, 1, 'L', 1)
                 for _, f in h_p.iterrows():
-                    pdf.set_font("Arial", 'B', 9); pdf.cell(0, 7, f"FECHA: {f.get('MARCA TEMPORAL')}", 0, 1)
+                    pdf.set_font("Arial", 'B', 9); pdf.cell(0, 7, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L')
                     pdf.set_font("Arial", '', 9)
-                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nTRATAMIENTO: {f.get('8. MEDICAMENTOS')}\nNOTAS: {f.get('9. EPICRISIS O NOTAS ADICIONALES')}")
-                    pdf.ln(2); pdf.cell(0, 0, "", 'T', 1); pdf.ln(2)
+                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nLABORATORIOS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
+                    pdf.ln(3)
 
-            st.download_button("📥 Descargar Historia Clínica (PDF)", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
+            st.download_button("📥 Descargar Reporte PDF", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
 
-            # --- NUEVA EVOLUCIÓN ---
+            # --- FORMULARIO NUEVA EVOLUCIÓN ---
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
-                with st.form("f_evo", clear_on_submit=True):
+                with st.form("f_evo"):
                     c1, c2 = st.columns(2)
-                    with c1:
-                        e_mot = st.text_area("3. Motivo de Consulta")
-                        e_val = st.text_area("2. Valoración")
-                        e_tal = st.text_input("4. Talla (cm)")
+                    with c1: 
+                        v_mot = st.text_area("3. Motivo de Consulta")
+                        v_val = st.text_area("2. Valoración")
+                        v_ant = st.text_area("7. Antecedentes Médicos")
+                        v_tal = st.text_input("4. Talla")
                     with c2:
-                        e_pes = st.text_input("5. Peso (kg)")
-                        e_pre = st.text_input("6. Presión Arterial")
-                        e_med = st.text_area("8. Medicamentos / Tratamiento")
-                        e_not = st.text_area("9. Epicrisis / Notas")
+                        v_pes = st.text_input("5. Peso")
+                        v_pre = st.text_input("6. Presión Arterial")
+                        v_med = st.text_area("8. Medicamentos")
+                        v_lab = st.text_area("9. Laboratorios/Procedimientos")
+                        v_epi = st.text_area("10. Epicrisis")
                     
-                    if st.form_submit_button("GUARDAR REGISTRO MÉDICO"):
-                        data_evo = {
-                            "entry.2019369477": id_buscado, "entry.611862537": e_mot, "entry.1088523869": e_val,
-                            "entry.1275746503": e_tal, "entry.949747647": e_pes, "entry.2091389798": e_pre,
-                            "entry.2016051626": e_med, "entry.616774918": e_not
+                    if st.form_submit_button("GUARDAR EVOLUCIÓN"):
+                        # Aquí se vinculan los entry_id de tu Google Form de Historial
+                        data_hist = {
+                            "entry.2019369477": id_buscado, "entry.611862537": v_mot, "entry.1088523869": v_val,
+                            "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre,
+                            "entry.2016051626": v_med, "entry.616774918": v_epi # Agregar los faltantes según tu form
                         }
-                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_evo)
-                        st.success("✅ Evolución guardada."); st.cache_data.clear(); st.rerun()
+                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_hist)
+                        st.success("✅ Evolución enviada correctamente."); st.cache_data.clear(); st.rerun()
 
             # --- HISTORIAL EN PANTALLA ---
             st.subheader("📋 Evoluciones Recientes")
@@ -196,19 +178,19 @@ elif st.session_state.menu == "Consulta":
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
                     <div class="evo-card">
-                        <small>📅 FECHA: {f.get('MARCA TEMPORAL')}</small>
+                        <small>📅 {f.get('MARCA TEMPORAL')}</small>
                         <p><b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}</p>
                         <p><b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}</p>
                         <div class="grid-medidas">
-                            <span><b>📏 Talla:</b> {f.get('4. TALLA')} cm</span>
-                            <span><b>⚖️ Peso:</b> {f.get('5. PESO')} kg</span>
-                            <span><b>🩸 Tensión:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
+                            <span><b>📏 Talla:</b> {f.get('4. TALLA')}</span>
+                            <span><b>⚖️ Peso:</b> {f.get('5. PESO')}</span>
+                            <span><b>🩸 TA:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p><b>💊 TRATAMIENTO:</b> {f.get('8. MEDICAMENTOS')}</p>
-                        <p style='font-size:0.9em; color:#333; border-top:1px solid #eee; padding-top:5px;'>
-                        <b>📝 NOTAS/EPICRISIS:</b><br>{f.get('9. EPICRISIS O NOTAS ADICIONALES')}</p>
+                        <p><b>💊 MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
+                        <p><b>🔬 LABS:</b> {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}</p>
+                        <p style='font-size:0.9em; color:#444; border-top: 1px solid #eee; padding-top:5px;'>
+                            <b>📝 EPICRISIS:</b> {f.get('10. EPICRISIS')}
+                        </p>
                     </div>""", unsafe_allow_html=True)
             else:
-                st.info("No hay registros de evolución para este paciente.")
-        else:
-            st.error("Paciente no encontrado. Verifique el número de documento.")
+                st.info("No hay evoluciones registradas para este paciente.")
