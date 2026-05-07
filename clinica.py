@@ -3,33 +3,47 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Tarjeta Vida", layout="centered")
+# --- 1. CONFIGURACIÓN Y ESTÉTICA ORIGINAL ---
+st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered")
 
-# --- 2. CARGA DE DATOS (FLEXIBLE) ---
+st.markdown("""
+    <style>
+    .medical-card {
+        background-color: #ffffff; padding: 20px; border-radius: 15px;
+        border-left: 10px solid #4fd1c5; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 20px; color: #1a202c;
+    }
+    .emergency-box {
+        background-color: #fff5f5; padding: 15px; border-radius: 8px;
+        border: 1px dashed #f56565; color: #c53030; font-weight: bold;
+    }
+    .evo-card {
+        background-color: #ffffff; padding: 15px; border-radius: 10px;
+        border-left: 5px solid #63b3ed; border: 1px solid #e2e8f0;
+        margin-bottom: 10px; color: #2d3748;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. CARGA DE DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
 
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=1)
 def cargar_datos():
     try:
-        p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
-        h = pd.read_csv(f"{URL_CSV}&sheet=historial")
-        # Limpiar espacios y estandarizar a mayúsculas para el código
-        p.columns = [str(c).strip().upper() for c in p.columns]
-        h.columns = [str(c).strip().upper() for c in h.columns]
+        # Cargar pacientes e historial
+        df_p = pd.read_csv(f"{URL_CSV}&sheet=pacientes")
+        df_h = pd.read_csv(f"{URL_CSV}&sheet=historial")
         
-        # Identificar la columna de Documento en ambas hojas
-        def encontrar_doc_col(df):
-            for col in df.columns:
-                if any(x in col for x in ['DOC', 'CEDULA', 'ID', 'IDENTIFICACION']):
-                    df['DOC_KEY'] = df[col].astype(str).str.split('.').str[0].str.strip()
-                    return df
-            df['DOC_KEY'] = df.iloc[:, 1].astype(str).str.split('.').str[0].str.strip()
+        # Normalización estricta de DOC_KEY para búsqueda
+        def preparar_df(df):
+            # Buscamos la columna de documento (normalmente la segunda después de Marca Temporal)
+            col_doc = df.columns[1] 
+            df['DOC_KEY'] = df[col_doc].astype(str).str.split('.').str[0].str.strip()
             return df
-
-        return encontrar_doc_col(p), encontrar_doc_col(h)
-    except Exception as e:
-        st.error(f"Error al conectar con Google Sheets: {e}")
+            
+        return preparar_df(df_p), preparar_df(df_h)
+    except:
         return None, None
 
 df_p, df_h = cargar_datos()
@@ -38,104 +52,112 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    st.title("🩺 TARJETA VIDA")
-    if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
-    if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
-    if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
+    st.title("🩺 MENÚ")
+    if st.button("🏠 Inicio"): st.session_state.menu = "Inicio"
+    if st.button("📝 Registrar Paciente"): st.session_state.menu = "Registrar"
+    if st.button("🔍 Consulta / Evolución"): st.session_state.menu = "Consulta"
 
-# --- 4. FUNCIONES DE APOYO ---
-def obtener_valor(df_row, posibles_nombres):
-    """Busca un valor en la fila probando diferentes nombres de columna."""
-    for nombre in posibles_nombres:
-        if nombre.upper() in df_row.index:
-            return str(df_row[nombre.upper()])
-    return "No registrado"
+# --- 4. VISTAS ---
 
-def generar_pdf(paciente, historial_p):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "HISTORIA CLÍNICA - TARJETA VIDA", ln=True, align='C')
-    pdf.ln(5)
-    
-    # Datos Paciente en PDF
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 7, f"PACIENTE: {obtener_valor(paciente, ['NOMBRE', 'NOMBRE COMPLETO'])}", ln=True)
-    pdf.set_font("Arial", '', 10)
-    pdf.cell(0, 6, f"Doc: {paciente['DOC_KEY']} | EPS: {obtener_valor(paciente, ['EPS'])} | RH: {obtener_valor(paciente, ['RH'])}", ln=True)
-    pdf.ln(5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    
-    # Evoluciones en PDF
-    for _, fila in historial_p.iterrows():
-        pdf.ln(2)
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(0, 6, f"FECHA: {fila.get('MARCA TEMPORAL', 'S/F')}", ln=True)
-        pdf.set_font("Arial", '', 9)
-        # Mostrar los campos principales de la evolución
-        msg = f"MOTIVO: {obtener_valor(fila, ['MOTIVO DE LA CONSULTA'])}\nVALORACION: {obtener_valor(fila, ['VALORACION'])}\nMEDICAMENTOS: {obtener_valor(fila, ['MEDICAMENTOS'])}\n"
-        pdf.multi_cell(0, 5, msg)
-        pdf.cell(0, 2, "_"*80, ln=True)
-    
-    return pdf.output(dest='S').encode('latin-1')
-
-# --- 5. VISTAS ---
 if st.session_state.menu == "Inicio":
-    st.title("🩺 BIENVENIDO A TARJETA VIDA")
-    st.write("Seleccione una opción en el menú lateral para comenzar.")
+    st.title("BIENVENIDO A TARJETA VIDA")
+    st.info("Sistema de Gestión de Historias Clínicas")
 
 elif st.session_state.menu == "Registrar":
-    st.title("📝 REGISTRO DE PACIENTE")
-    st.info("Complete el formulario en Google Forms para registrar al paciente.")
-    st.markdown("[Abrir Formulario de Registro](https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/viewform)")
+    st.title("📝 REGISTRO DE NUEVO PACIENTE")
+    with st.form("form_registro", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nombres = st.text_input("Nombre Completo")
+            t_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "RC", "CE"])
+            n_doc = st.text_input("Número de Documento")
+        with col2:
+            edad = st.text_input("Edad")
+            eps = st.text_input("EPS")
+            rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        
+        c_emergencia = st.text_input("Nombre Contacto Emergencia")
+        t_emergencia = st.text_input("Teléfono Contacto Emergencia")
+        
+        if st.form_submit_button("GUARDAR PACIENTE"):
+            # Mapeo exacto a tu Google Form de Pacientes
+            data_p = {
+                "entry.346175428": nombres, "entry.1650757004": t_doc,
+                "entry.1302424820": n_doc, "entry.1172011247": eps,
+                "entry.162368130": rh, "entry.1645028456": c_emergencia,
+                "entry.1500244670": t_emergencia
+            }
+            requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=data_p)
+            st.success("Paciente registrado exitosamente.")
+            st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
-    st.title("🔍 CONSULTA")
-    busqueda = st.text_input("Ingrese el Documento del Paciente:").strip()
+    st.title("🔍 CONSULTA Y EVOLUCIÓN")
+    busqueda = st.text_input("Ingrese Documento del Paciente:").strip()
     
     if busqueda and df_p is not None:
-        p_match = df_p[df_p["DOC_KEY"] == busqueda]
+        p_row = df_p[df_p["DOC_KEY"] == busqueda]
         
-        if not p_match.empty:
-            p = p_match.iloc[0]
+        if not p_row.empty:
+            p = p_row.iloc[0]
+            # TARJETA COMPLETA
+            st.markdown(f"""
+            <div class="medical-card">
+                <h2>👤 {p.iloc[2]}</h2>
+                <p><b>Documento:</b> {p.iloc[1]} ({p.iloc[3]}) | <b>Edad:</b> {p.iloc[4]}</p>
+                <p><b>EPS:</b> {p.iloc[5]} | <b>RH:</b> {p.iloc[6]}</p>
+                <div class="emergency-box">
+                    🚨 EMERGENCIA: {p.iloc[7]} - {p.iloc[8]}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # FORMULARIO EVOLUCIÓN (10 CAMPOS)
+            with st.expander("✍️ REGISTRAR EVOLUCIÓN MÉDICA"):
+                with st.form("form_evo", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        v1 = st.text_area("Valoración"); v2 = st.text_area("Motivo de consulta")
+                        v3 = st.text_input("Talla"); v4 = st.text_input("Peso")
+                    with c2:
+                        v5 = st.text_input("Presión Arterial"); v6 = st.text_area("Antecedentes")
+                        v7 = st.text_area("Medicamentos"); v8 = st.text_area("Epicrisis")
+                    
+                    if st.form_submit_button("GUARDAR EVOLUCIÓN"):
+                        data_h = {
+                            "entry.2019369477": busqueda, "entry.1088523869": v1, "entry.611862537": v2,
+                            "entry.1275746503": v3, "entry.949747647": v4, "entry.2091389798": v5,
+                            "entry.889985940": v6, "entry.2016051626": v7, "entry.616774918": v8
+                        }
+                        requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_h)
+                        st.success("Evolución guardada."); st.cache_data.clear(); st.rerun()
+
+            # HISTORIAL Y PDF
+            st.subheader("📋 HISTORIAL")
+            h_p = df_h[df_h["DOC_KEY"] == busqueda].sort_index(ascending=False)
             
-            # --- TARJETA DEL PACIENTE ---
-            st.success("Paciente Encontrado")
-            with st.container():
-                st.subheader(f"👤 {obtener_valor(p, ['NOMBRE', 'NOMBRE COMPLETO'])}")
-                c1, c2, c3 = st.columns(3)
-                c1.write(f"**Documento:** {busqueda}")
-                c2.write(f"**Edad:** {obtener_valor(p, ['EDAD'])}")
-                c3.write(f"**RH:** {obtener_valor(p, ['RH'])}")
-                
-                c4, c5 = st.columns(2)
-                c4.write(f"**EPS:** {obtener_valor(p, ['EPS'])}")
-                c5.write(f"**Celular:** {obtener_valor(p, ['CELULAR', 'TELEFONO'])}")
-                
-                st.warning(f"🚨 **Emergencia:** {obtener_valor(p, ['NOMBRE CONTACTO EMERGENCIA'])} - {obtener_valor(p, ['TELEFONO CONTACTO EMERGENCIA'])}")
-
-            # --- BOTÓN PDF ---
-            if df_h is not None:
-                h_p = df_h[df_h["DOC_KEY"] == busqueda].sort_index(ascending=False)
-                if not h_p.empty:
-                    st.download_button(
-                        label="📥 Descargar Historia Clínica (PDF)",
-                        data=generar_pdf(p, h_p),
-                        file_name=f"HC_{busqueda}.pdf",
-                        mime="application/pdf"
-                    )
-
-            # --- VISUALIZACIÓN DE EVOLUCIONES ---
-            st.divider()
-            st.subheader("📋 Evoluciones Recientes")
             if not h_p.empty:
-                for _, fila in h_p.iterrows():
-                    with st.expander(f"📅 {fila.get('MARCA TEMPORAL', 'Ver detalles')}"):
-                        st.write(f"**Motivo:** {obtener_valor(fila, ['MOTIVO DE LA CONSULTA'])}")
-                        st.write(f"**Valoración:** {obtener_valor(fila, ['VALORACION'])}")
-                        st.write(f"**Medicamentos:** {obtener_valor(fila, ['MEDICAMENTOS'])}")
-                        st.write(f"**Epicrisis:** {obtener_valor(fila, ['EPICRISIS'])}")
+                # Generar PDF (Simple y funcional)
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 14)
+                pdf.cell(0, 10, f"HISTORIA: {p.iloc[2]}", ln=True)
+                pdf.set_font("Arial", size=10)
+                for _, r in h_p.iterrows():
+                    pdf.multi_cell(0, 5, f"FECHA: {r.iloc[0]}\nMOTIVO: {r.iloc[2]}\nVALORACION: {r.iloc[3]}\nEPICRISIS: {r.iloc[9]}\n{'-'*40}")
+                
+                st.download_button("📥 Descargar PDF", pdf.output(dest='S').encode('latin-1'), f"HC_{busqueda}.pdf", "application/pdf")
+
+                for _, r in h_p.iterrows():
+                    st.markdown(f"""
+                    <div class="evo-card">
+                        <small>📅 {r.iloc[0]}</small><br>
+                        <b>Motivo:</b> {r.iloc[2]}<br>
+                        <b>Valoración:</b> {r.iloc[3]}<br>
+                        <b>Medicamentos:</b> {r.iloc[8]}
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
-                st.info("Este paciente no tiene evoluciones registradas aún.")
+                st.info("No hay registros previos.")
         else:
-            st.error("No se encontró ningún paciente con ese número de documento.")
+            st.error("Paciente no encontrado.")
