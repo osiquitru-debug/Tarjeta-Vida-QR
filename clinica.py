@@ -39,7 +39,7 @@ st.markdown(f"""
     }}
     .emergency-box {{
         background-color: #ffe5d9; padding: 12px; border-radius: 8px;
-        border: 1px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
+        border: 2px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
     }}
     .evo-card {{
         background-color: #ffffff; padding: 15px; border-radius: 10px;
@@ -115,15 +115,25 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
-            # Se usan nombres normalizados según la carga de datos
-            # Ajuste de claves para asegurar visualización de emergencia
+            # --- LÓGICA DE BÚSQUEDA ROBUSTA PARA EMERGENCIA ---
+            def obtener_dato(df_row, palabras_clave):
+                for col in df_row.index:
+                    if all(palabra in col for palabra in palabras_clave):
+                        return df_row[col]
+                return "No registra"
+
+            nom_emer = obtener_dato(p, ["NOMBRE", "CONTACTO", "EMERGENCIA"])
+            tel_emer = obtener_dato(p, ["TEL", "CONTACTO", "EMERGENCIA"])
+            alertas = obtener_dato(p, ["CONDICIONES", "ESPECIALES"])
+
+            # TARJETA PACIENTE
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
-                <p><b>ID:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')} | <b>RH:</b> {p.get('RH')}</p>
-                <p><b>EPS:</b> {p.get('EPS')} | <b>CEL:</b> {p.get('CELULAR')}</p>
-                <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
-                <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} (Tel: {p.get('TELÉFONO CONTACTO EMERGENCIA')})</div>
+                <h2 style='margin:0;'>👤 {p.get('NOMBRE', 'No registra')}</h2>
+                <p><b>ID:</b> {p.get('DOCUMENTO', 'No registra')} | <b>EDAD:</b> {p.get('EDAD', 'No registra')} | <b>RH:</b> {p.get('RH', 'No registra')}</p>
+                <p><b>EPS:</b> {p.get('EPS', 'No registra')} | <b>CEL:</b> {p.get('CELULAR', 'No registra')}</p>
+                <p><b>⚠️ ALERTAS:</b> {alertas}</p>
+                <div class="emergency-box">🚨 EMERGENCIA: {nom_emer} (Tel: {tel_emer})</div>
             </div>""", unsafe_allow_html=True)
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
@@ -139,7 +149,11 @@ elif st.session_state.menu == "Consulta":
             pdf.set_fill_color(230, 230, 230)
             pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, 'L', 1)
             pdf.set_font("Arial", '', 9)
-            info_p = f"Nombre: {p.get('NOMBRE')}\nDocumento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\nEPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\nAlertas: {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}\nCONTACTO EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} - Tel: {p.get('TELÉFONO CONTACTO EMERGENCIA')}"
+            info_p = (f"Nombre: {p.get('NOMBRE')}\n"
+                      f"Documento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\n"
+                      f"EPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\n"
+                      f"Alertas: {alertas}\n"
+                      f"CONTACTO EMERGENCIA: {nom_emer} - Tel: {tel_emer}")
             pdf.multi_cell(0, 5, info_p); pdf.ln(5)
 
             if not h_p.empty:
