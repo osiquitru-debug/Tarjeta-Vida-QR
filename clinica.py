@@ -6,9 +6,8 @@ from fpdf import FPDF
 # --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Link directo de la imagen de Google Drive (ID extraído del enlace original)
-# Nota: Para visualización directa en Streamlit se usa el ID del archivo
-LOGO_URL = "https://drive.google.com/uc?export=view&id=1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
+# URL configurada para descarga directa
+LOGO_URL = "https://drive.google.com/uc?export=download&id=1k1ef0WvY-IXPJTajkPR6eukxj-qcraxH"
 
 st.markdown("""
     <style>
@@ -28,6 +27,7 @@ st.markdown("""
         margin-bottom: 10px; color: #2d3748; text-align: left;
     }
     .grid-medidas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; font-size: 0.9em; }
+    [data-testid="stSidebarNav"] { background-image: none; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -55,10 +55,8 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # Centrado en el Sidebar
-    _, col_side, _ = st.columns([1, 4, 1])
-    with col_side:
-        st.image(LOGO_URL, use_container_width=True)
+    # Imagen centrada en el sidebar
+    st.image(LOGO_URL, use_container_width=True)
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -66,29 +64,28 @@ with st.sidebar:
 
 # --- 4. VISTAS ---
 
-if st.session_state.menu == "Inicio":
-    # Centrado en Inicio
-    col1, col2, col3 = st.columns([1, 1, 1])
+def mostrar_logo_centrado(ancho=200):
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.image(LOGO_URL, width=150)
+        st.image(LOGO_URL, width=ancho)
+
+if st.session_state.menu == "Inicio":
+    mostrar_logo_centrado(250)
     st.markdown("<h1 style='text-align: center;'>🩺 TARJETA VIDA</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>Sistema de Historias Clínicas</h3>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>Guadalupe, Huila</p>", unsafe_allow_html=True)
 
 elif st.session_state.menu == "Registrar":
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.image(LOGO_URL, width=120)
+    mostrar_logo_centrado(150)
     st.markdown("<h1 style='text-align: center;'>📝 REGISTRO DE NUEVO PACIENTE</h1>", unsafe_allow_html=True)
-    
     with st.form("form_registro_paciente", clear_on_submit=True):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
+        col1, col2 = st.columns(2)
+        with col1:
             nombre = st.text_input("Nombre Completo")
             tipo_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "CE", "RC"])
             n_doc = st.text_input("Número de Documento")
             edad = st.text_input("Edad")
-        with col_f2:
+        with col2:
             celular = st.text_input("Celular")
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
@@ -108,11 +105,8 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al enviar datos.")
 
 elif st.session_state.menu == "Consulta":
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.image(LOGO_URL, width=120)
+    mostrar_logo_centrado(150)
     st.markdown("<h1 style='text-align: center;'>🔍 CONSULTA MÉDICA</h1>", unsafe_allow_html=True)
-    
     busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
 
