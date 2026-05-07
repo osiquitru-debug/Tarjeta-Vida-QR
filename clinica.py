@@ -32,7 +32,6 @@ st.markdown(f"""
         border: 1px solid #cbd5e1 !important;
     }}
 
-    /* ESTRUCTURA ORIGINAL: TARJETA DE PACIENTE */
     .medical-card {{
         background-color: #ffffff; padding: 20px; border-radius: 15px;
         border-left: 10px solid #a2d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -44,7 +43,6 @@ st.markdown(f"""
         border: 1px dashed #f43f5e; color: #b91c1c; font-weight: bold; margin-top: 10px;
     }}
 
-    /* ESTRUCTURA ORIGINAL: TARJETA DE EVOLUCIÓN */
     .evo-card {{
         background-color: #ffffff; padding: 15px; border-radius: 10px;
         border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7;
@@ -65,7 +63,6 @@ st.markdown(f"""
         font-weight: bold !important;
     }}
 
-    /* Estilo para el Copyright */
     .footer {{
         position: fixed;
         left: 0;
@@ -141,7 +138,6 @@ elif st.session_state.menu == "Consulta":
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA DE PACIENTE (ORIGINAL)
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
@@ -151,13 +147,35 @@ elif st.session_state.menu == "Consulta":
                 <div class="emergency-box">🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
-            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-            
-            # PDF
+            # --- GENERACIÓN DE PDF MEJORADO CON DATOS DE INICIO ---
             pdf = FPDF()
-            pdf.add_page(); pdf.set_font("Arial", 'B', 16)
-            pdf.cell(200, 10, f"HC: {p.get('NOMBRE')}", ln=True, align='C')
-            st.download_button("📥 Descargar HC (PDF)", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
+            pdf.add_page()
+            
+            # Encabezado (Datos de Inicio)
+            pdf.set_font("Arial", 'B', 20)
+            pdf.cell(200, 10, "Tarjeta Vida QR", ln=True, align='C')
+            pdf.set_font("Arial", 'I', 12)
+            pdf.cell(200, 10, "Tu Informacion de Salud Siempre Contigo", ln=True, align='C')
+            pdf.ln(10)
+            
+            # Cuerpo de la Historia Clínica
+            pdf.set_font("Arial", 'B', 14)
+            pdf.cell(200, 10, f"HISTORIA CLINICA: {p.get('NOMBRE')}", ln=True)
+            pdf.set_font("Arial", '', 11)
+            pdf.cell(200, 8, f"Documento: {p.get('DOCUMENTO')} | RH: {p.get('RH')} | Edad: {p.get('EDAD')}", ln=True)
+            pdf.cell(200, 8, f"EPS: {p.get('EPS')}", ln=True)
+            pdf.ln(5)
+            pdf.set_text_color(200, 0, 0)
+            pdf.cell(200, 8, f"ALERTAS: {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}", ln=True)
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(10)
+            
+            # Pie de página en el PDF
+            pdf.set_y(-25)
+            pdf.set_font("Arial", 'I', 8)
+            pdf.cell(0, 10, "(c) 2026 Abril_Garcia_Sierra", 0, 0, 'C')
+            
+            st.download_button("📥 Descargar HC Oficial (PDF)", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
 
             # Formulario Nueva Evolución
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -172,8 +190,8 @@ elif st.session_state.menu == "Consulta":
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
                         st.success("Guardado."); st.cache_data.clear(); st.rerun()
 
-            # TARJETA DE EVOLUCIÓN (ORIGINAL SIN NÚMEROS)
             st.subheader("📋 Historial de Evoluciones")
+            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             if not h_p.empty:
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
