@@ -3,55 +3,64 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN VISUAL (PALETA PASTEL "VIDA QR") ---
+# --- 1. CONFIGURACIÓN VISUAL (TEXTO NEGRO Y CAJAS BLANCAS) ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 
 st.markdown(f"""
     <style>
-    /* Fondo general en un tono crema/menta muy sutil */
+    /* Fondo general pastel suave */
     .stApp {{ 
         background-color: #f0f7f4 !important; 
+        color: #000000 !important;
     }}
     
-    /* Barra lateral en blanco puro con sombra suave */
-    [data-testid="stSidebar"] {{
-        background-color: #ffffff !important;
-        border-right: 1px solid #e0eadd;
+    /* Forzar que todos los textos de Streamlit sean negros */
+    h1, h2, h3, p, span, label, .stMarkdown {{
+        color: #000000 !important;
     }}
 
-    /* Tarjeta de Paciente - Tonos Turquesa Pastel */
+    /* CAJAS DE DATOS BLANCAS (Inputs, Selectbox, Textarea) */
+    .stTextInput>div>div>input, 
+    .stSelectbox>div>div>div, 
+    .stTextArea>div>div>textarea {{
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #cbd5e1 !important;
+    }}
+
+    /* Tarjeta de Paciente */
     .medical-card {{
         background-color: #ffffff; 
         padding: 20px; 
         border-radius: 20px;
-        border-left: 12px solid #a2d2ff; /* Azul pastel suave */
-        box-shadow: 0 8px 20px rgba(0,0,0,0.02);
+        border-left: 12px solid #a2d2ff; 
+        box-shadow: 0 8px 20px rgba(0,0,0,0.05);
         margin-bottom: 20px; 
-        color: #455a64;
+        color: #000000 !important;
     }}
     
-    /* Caja de Emergencia - Tono Salmón/Rosa Pastel */
+    /* Caja de Emergencia */
     .emergency-box {{
         background-color: #ffe5d9; 
         padding: 15px; 
         border-radius: 12px;
         border: 2px dashed #ffcad4; 
-        color: #d64545; 
+        color: #d64545 !important; 
         font-weight: bold; 
         margin-top: 10px;
     }}
 
-    /* Tarjetas de Evolución - Tonos Menta Pastel */
+    /* Tarjetas de Evolución */
     .evo-card {{
         background-color: #ffffff; 
         padding: 15px; 
         border-radius: 15px;
         border: 1px solid #d8e2dc; 
-        border-left: 8px solid #b7e4c7; /* Verde menta del logo */
+        border-left: 8px solid #b7e4c7; 
         margin-bottom: 12px; 
-        color: #4a5759;
+        color: #000000 !important;
     }}
 
     .grid-medidas {{ 
@@ -62,28 +71,16 @@ st.markdown(f"""
         background-color: #f9fbf9;
         padding: 8px;
         border-radius: 8px;
+        color: #000000 !important;
     }}
 
-    /* Botones con el Cian del logo */
+    /* Botón Cian del logo */
     div.stButton > button {{
-        background-color: #84dcc6 !important; /* Cian pastel */
-        color: white !important; 
+        background-color: #84dcc6 !important;
+        color: #000000 !important; /* Texto del botón también negro para consistencia */
         border: none !important;
         border-radius: 10px !important;
         font-weight: bold !important;
-        transition: 0.3s;
-    }}
-    
-    div.stButton > button:hover {{
-        background-color: #a5ffd6 !important;
-        transform: translateY(-2px);
-    }}
-
-    /* Estilo de los expanders */
-    .streamlit-expanderHeader {{
-        background-color: #ffffff !important;
-        border-radius: 10px !important;
-        color: #4a5759 !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -113,7 +110,7 @@ if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    st.markdown("<h2 style='text-align: center; color: #4a5759;'>GESTIÓN</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>GESTIÓN</h2>", unsafe_allow_html=True)
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
     if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
@@ -124,7 +121,7 @@ if st.session_state.menu == "Inicio":
     st.image(LOGO_URL, width=280)
     st.title("🩺 TARJETA VIDA")
     st.markdown("### *Cuidado Integral con Tecnología QR*")
-    st.info("Plataforma médica optimizada para la comunidad de Guadalupe, Huila.")
+    st.write("Plataforma médica optimizada para la comunidad de Guadalupe, Huila.")
 
 elif st.session_state.menu == "Registrar":
     st.image(LOGO_URL, width=120)
@@ -153,8 +150,7 @@ elif st.session_state.menu == "Registrar":
             }
             try:
                 requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-                st.success("✅ Paciente registrado en la base de datos Vida QR.")
-                st.cache_data.clear()
+                st.success("✅ Paciente registrado."); st.cache_data.clear()
             except: st.error("Error de conexión.")
 
 elif st.session_state.menu == "Consulta":
@@ -167,18 +163,18 @@ elif st.session_state.menu == "Consulta":
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            # TARJETA DE PACIENTE (FORMATO ORIGINAL CON NUEVOS COLORES)
             st.markdown(f"""
             <div class="medical-card">
-                <h2 style='margin:0; color:#4a5759;'>👤 {p.get('NOMBRE')}</h2>
+                <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
                 <p style='margin:5px 0;'><b>ID:</b> {p.get('DOCUMENTO')} | <b>RH:</b> {p.get('RH')} | <b>EDAD:</b> {p.get('EDAD')} años</p>
                 <p><b>EPS:</b> {p.get('EPS')}</p>
                 <p><b>⚠️ ALERTAS:</b> {p.get('CONDICIONES ESPECIALES (ALERGIAS, ENFERMEDADES DE BASE)')}</p>
                 <div class="emergency-box">🚨 EN EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
             </div>""", unsafe_allow_html=True)
 
-            # BOTÓN PDF
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
+            
+            # Botón PDF
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
@@ -208,7 +204,6 @@ elif st.session_state.menu == "Consulta":
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=e_payload)
                         st.success("Sincronizado."); st.cache_data.clear(); st.rerun()
 
-            # HISTORIAL EN TARJETAS DE EVOLUCIÓN
             st.subheader("📋 Evoluciones Recientes")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
@@ -223,5 +218,3 @@ elif st.session_state.menu == "Consulta":
                         </div>
                         <p>💊 <b>Plan:</b> {f.get('8. MEDICAMENTOS')}</p>
                     </div>""", unsafe_allow_html=True)
-            else: st.info("No hay registros previos.")
-        else: st.error("No se encontró el paciente.")
