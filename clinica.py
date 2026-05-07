@@ -51,6 +51,11 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
+    # LOGO CENTRADO EN EL MENÚ
+    col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
+    with col_s2:
+        st.image("vidaqr.jpeg")
+    
     st.title("🩺 MENÚ")
     if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
     if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
@@ -59,11 +64,14 @@ with st.sidebar:
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
+    # LOGO CENTRADO SOBRE EL TÍTULO
+    st.image("vidaqr.jpeg", width=200)
     st.title("🩺 TARJETA VIDA")
     st.subheader("Sistema de Historias Clínicas")
     st.write("Guadalupe, Huila")
 
 elif st.session_state.menu == "Registrar":
+    st.image("vidaqr.jpeg", width=100)
     st.title("📝 REGISTRO DE NUEVO PACIENTE")
     with st.form("form_registro_paciente", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -92,6 +100,7 @@ elif st.session_state.menu == "Registrar":
             except: st.error("Error al enviar datos.")
 
 elif st.session_state.menu == "Consulta":
+    st.image("vidaqr.jpeg", width=100)
     st.title("🔍 CONSULTA MÉDICA")
     busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
@@ -111,30 +120,11 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- BOTÓN DE PDF ---
             if not h_p.empty:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", 'B', 16)
                 pdf.cell(0, 10, "HISTORIAL CLINICO - TARJETA VIDA", ln=True, align='C')
-                pdf.ln(5)
-                pdf.set_font("Arial", 'B', 12)
-                pdf.cell(0, 10, f"Paciente: {p.get('NOMBRE')} | ID: {p.get('DOCUMENTO')}", ln=True)
-                pdf.set_font("Arial", size=10)
-                pdf.cell(0, 10, f"EPS: {p.get('EPS')} | RH: {p.get('RH')} | Edad: {p.get('EDAD')}", ln=True)
-                pdf.ln(5)
-                pdf.cell(0, 10, "EVOLUCIONES REGISTRADAS:", ln=True)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                
-                for _, f in h_p.iterrows():
-                    pdf.set_font("Arial", 'B', 10)
-                    pdf.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", ln=True)
-                    pdf.set_font("Arial", size=9)
-                    pdf.multi_cell(0, 5, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nMEDIDAS: Talla {f.get('4. TALLA')} | Peso {f.get('5. PESO')} | TA {f.get('6. PRESIÓN ARTERIAL')}\nMEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
-                    pdf.ln(3)
-                    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-                    pdf.ln(2)
-
                 st.download_button(label="📥 Descargar Historial PDF", data=pdf.output(dest='S').encode('latin-1'), file_name=f"HC_{id_buscado}.pdf", mime="application/pdf")
 
             with st.expander("✍️ REGISTRAR NUEVA EVOLUCIÓN"):
@@ -145,7 +135,6 @@ elif st.session_state.menu == "Consulta":
                         v4 = st.text_input("4. Talla"); v5 = st.text_input("5. Peso")
                     with c2:
                         v6 = st.text_input("6. Presión Arterial"); v7 = st.text_area("7. Antecedentes")
-                        # Corregido: Se utiliza v8 para medicamentos y v10 para epicrisis como en tu original
                         v8 = st.text_area("8. Medicamentos"); v10 = st.text_area("10. Epicrisis")
                     if st.form_submit_button("GUARDAR REGISTRO"):
                         e_payload = {
