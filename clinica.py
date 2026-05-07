@@ -3,78 +3,11 @@ import pandas as pd
 import requests
 from fpdf import FPDF
 
-# --- 1. CONFIGURACIÓN VISUAL (ESTILO CONSULTORÍA CON CENTRADO) ---
+# --- 1. CONFIGURACIÓN VISUAL ---
 st.set_page_config(page_title="Tarjeta Vida | Gestión Médica", layout="centered", page_icon="🩺")
 
-# Enlace del logo estable
+# Enlace directo estable
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
-
-st.markdown(f"""
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet">
-    <style>
-    .stApp {{
-        background-color: #f4fafa !important;
-        font-family: 'Lato', sans-serif;
-    }}
-    
-    /* Centrado de Títulos y Contenedores de Imagen */
-    .main-title {{
-        text-align: center;
-        font-family: 'Poppins', sans-serif;
-        color: #1e293b !important;
-        margin-top: -20px;
-    }}
-    
-    .centered-image {{
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }}
-
-    /* Barra Lateral */
-    [data-testid="stSidebar"] {{
-        background-color: #ffffff !important;
-        border-right: 1px solid #e2e8f0;
-    }}
-    
-    /* Centrado de imagen en Sidebar */
-    [data-testid="stSidebarNav"] + div {{
-        display: flex;
-        justify-content: center;
-        padding: 10px;
-    }}
-
-    /* Tarjeta de Paciente */
-    .medical-card {{
-        background-color: #ffffff;
-        padding: 30px;
-        border-radius: 4px;
-        border-top: 6px solid #22d3ee;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-        margin-bottom: 25px;
-        color: #334155;
-    }}
-    
-    .emergency-box {{
-        background-color: #fff1f2;
-        padding: 15px;
-        border-radius: 4px;
-        border-left: 4px solid #f43f5e;
-        color: #9f1239;
-        font-weight: 600;
-        margin-top: 15px;
-    }}
-
-    /* Botones Premium */
-    div.stButton > button {{
-        background-color: #0891b2 !important;
-        color: white !important;
-        border-radius: 2px !important;
-        width: 100%;
-        font-weight: 600 !important;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- 2. CARGA DE DATOS ---
 URL_CSV = "https://docs.google.com/spreadsheets/d/18Ohfwj5TkaoRf3oPFpPxpPYhHTpccfLpG5r30MXEvC0/gviz/tq?tqx=out:csv"
@@ -91,7 +24,7 @@ def cargar_datos():
         h['ID_KEY'] = h['1. DOCUMENTO'].apply(limpiar)
         return p, h
     except Exception as e:
-        st.error(f"Error de sistema: {e}")
+        st.error(f"Error al cargar base de datos: {e}")
         return None, None
 
 df_p, df_h = cargar_datos()
@@ -100,67 +33,58 @@ df_p, df_h = cargar_datos()
 if 'menu' not in st.session_state: st.session_state.menu = "Inicio"
 
 with st.sidebar:
-    # Centrado manual en sidebar usando columnas
-    col_side1, col_side2, col_side3 = st.columns([1, 4, 1])
-    with col_side2:
-        st.image(LOGO_URL, use_container_width=True)
+    # Imagen centrada en el sidebar usando columnas
+    col_s1, col_s2, col_s3 = st.columns([1, 3, 1])
+    with col_s2:
+        st.image(LOGO_URL)
     
-    st.markdown("<h3 style='text-align: center; color: #1e293b;'>MENÚ</h3>", unsafe_allow_html=True)
-    if st.button("🏠 DASHBOARD"): st.session_state.menu = "Inicio"
-    if st.button("📝 REGISTRO"): st.session_state.menu = "Registrar"
-    if st.button("🔍 HISTORIAL"): st.session_state.menu = "Consulta"
+    st.title("🩺 MENÚ")
+    if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"
+    if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"
+    if st.button("🔍 Consulta / Evolución", use_container_width=True): st.session_state.menu = "Consulta"
 
 # --- 4. VISTAS ---
 
 if st.session_state.menu == "Inicio":
-    # Centrado usando columnas para la imagen principal
+    # Imagen centrada sobre el título
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.image(LOGO_URL, use_container_width=True)
-    
-    st.markdown("<h1 class='main-title'>TARJETA VIDA</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #64748b;'><i>Intelligence Healthcare Management | Guadalupe, Huila</i></p>", unsafe_allow_html=True)
+        st.image(LOGO_URL)
+    st.markdown("<h1 style='text-align: center;'>TARJETA VIDA</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Sistema de Historias Clínicas - Guadalupe, Huila</p>", unsafe_allow_html=True)
 
 elif st.session_state.menu == "Registrar":
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
+    col_r1, col_r2, col_r3 = st.columns([1, 1, 1])
+    with col_r2:
         st.image(LOGO_URL, width=150)
-    st.markdown("<h1 class='main-title'>REGISTRO CLÍNICO</h1>", unsafe_allow_html=True)
-    
-    with st.form("form_registro", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        with c1:
+    st.title("📝 REGISTRO DE NUEVO PACIENTE")
+    with st.form("form_registro_paciente", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
             nombre = st.text_input("Nombre Completo")
-            tipo_doc = st.selectbox("Tipo de Identificación", ["CC", "TI", "CE", "RC"])
-            n_doc = st.text_input("Documento")
-        with c2:
+            tipo_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "CE", "RC"])
+            n_doc = st.text_input("Número de Documento")
             edad = st.text_input("Edad")
+        with col2:
+            celular = st.text_input("Celular")
             eps = st.text_input("EPS")
             rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        
-        c_especiales = st.text_area("Notas / Alergias / Preexistencias")
-        if st.form_submit_button("COMPLETAR REGISTRO"):
-            st.success("✅ Datos sincronizados.")
+        c_especiales = st.text_area("Condiciones Especiales")
+        if st.form_submit_button("GUARDAR PACIENTE"):
+            st.success("Paciente guardado.")
 
 elif st.session_state.menu == "Consulta":
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
+    col_c1, col_c2, col_c3 = st.columns([1, 1, 1])
+    with col_c2:
         st.image(LOGO_URL, width=150)
-    st.markdown("<h1 class='main-title'>CONSULTA MÉDICA</h1>", unsafe_allow_html=True)
-    
-    busqueda_raw = st.text_input("Identificación del paciente").strip()
+    st.title("🔍 CONSULTA MÉDICA")
+    busqueda_raw = st.text_input("Ingrese el Documento del Paciente").strip()
     id_buscado = busqueda_raw.split('.')[0].replace(" ", "").strip()
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            st.markdown(f"""
-            <div class="medical-card">
-                <h2 style='margin:0; text-align: center;'>👤 {p.get('NOMBRE')}</h2>
-                <hr style='border: 0.5px solid #e2e8f0; margin: 15px 0;'>
-                <p style='text-align: center;'><b>{p.get('TIPO DE DOCUMENTO')}:</b> {p.get('DOCUMENTO')} | <b>EDAD:</b> {p.get('EDAD')} años</p>
-                <div class="emergency-box" style='text-align: center;'>🚨 EMERGENCIA: {p.get('NOMBRE CONTACTO EMERGENCIA')} ({p.get('TELEFONO CONTACTO EMERGENCIA')})</div>
-            </div>""", unsafe_allow_html=True)
+            st.write(f"### Paciente: {p.get('NOMBRE')}")
         else:
-            st.error("Paciente no encontrado.")
+            st.error("No encontrado.")
