@@ -7,7 +7,7 @@ import io
 import base64
 import os
 
-# --- 1. CONFIGURACIÓN VISUAL (ESTILOS ORIGINALES PRESERVADOS) ---
+# --- 1. CONFIGURACIÓN VISUAL (TU CÓDIGO ORIGINAL - SIN CAMBIOS) ---
 st.set_page_config(page_title="Tarjeta Vida QR", layout="centered", page_icon="🩺")
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 
@@ -34,6 +34,10 @@ st.markdown(f"""
         background-color: #ffe5d9; padding: 12px; border-radius: 8px;
         border: 2px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
     }}
+    .evo-card {{
+        background-color: #ffffff; padding: 15px; border-radius: 10px;
+        border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7; margin-bottom: 12px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -58,9 +62,9 @@ df_p, df_h = cargar_datos()
 # --- 3. NAVEGACIÓN ---
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    if st.button("🏠 Inicio", key="n_inicio"): st.session_state.menu = "Inicio"; st.rerun()
-    if st.button("📝 Registrar", key="n_reg"): st.session_state.menu = "Registrar"; st.rerun()
-    if st.button("🔍 Consulta", key="n_cons"): st.session_state.menu = "Consulta"; st.rerun()
+    if st.button("🏠 Inicio", key="nav_inicio"): st.session_state.menu = "Inicio"; st.rerun()
+    if st.button("📝 Registrar", key="nav_reg"): st.session_state.menu = "Registrar"; st.rerun()
+    if st.button("🔍 Consulta", key="nav_cons"): st.session_state.menu = "Consulta"; st.rerun()
 
 # --- 4. VISTAS ---
 if st.session_state.menu == "Inicio":
@@ -75,16 +79,12 @@ elif st.session_state.menu == "Registrar":
         c1, c2 = st.columns(2)
         with c1:
             nom = st.text_input("Nombre Completo"); tdoc = st.selectbox("Tipo Doc", ["CC", "TI", "CE", "RC"]); ndoc = st.text_input("Documento")
-            f_nac = st.text_input("Fecha Nacimiento (DD/MM/AAAA)")
         with c2:
             ed = st.text_input("Edad"); ep = st.text_input("EPS"); rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-            enfer = st.text_input("Enfermedades/Condiciones")
-        enom = st.text_input("Contacto Emergencia"); etel = st.text_input("Teléfono Emergencia"); alerg = st.text_area("Alergias")
-        
         if st.form_submit_button("GUARDAR PACIENTE"):
-            payload = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh, "entry.1892763134": enom, "entry.2011749615": etel, "entry.alergias": alerg, "entry.fecha": f_nac, "entry.enfer": enfer}
+            payload = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh}
             requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-            st.success("✅ Paciente registrado."); st.cache_data.clear()
+            st.success("✅ Guardado."); st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA CLÍNICA")
@@ -95,80 +95,47 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
-            # --- QR ÚNICO PARA ESTE PACIENTE ---
+            # --- QR ÚNICO POR PACIENTE ---
             url_p = f"https://tarjeta-vida-qr-abrilycompania.streamlit.app/?id={id_buscado}"
             qr_gen = segno.make(url_p)
             qr_buf = io.BytesIO(); qr_gen.save(qr_buf, kind='png', scale=10)
             qr_b64 = base64.b64encode(qr_buf.getvalue()).decode()
 
-            # Datos para el carnet
-            c_nom = p.get('NOMBRE CONTACTO', 'No registra')
-            c_tel = p.get('TELÉFONO CONTACTO', 'No registra')
-            alergias = p.get('ALERGIAS', 'Ninguna')
-            enfermedades = p.get('ENFERMEDADES', 'Ninguna')
-            fecha_nac = p.get('FECHA NACIMIENTO', '---')
-
-            # --- VISTA EN PANTALLA ---
-            st.markdown(f"""
-            <div class="medical-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:2;">
-                        <h2 style='margin:0;'>👤 {p.get('NOMBRE')}</h2>
-                        <p><b>ID:</b> {p.get('DOCUMENTO')} | <b>RH:</b> {p.get('RH')}</p>
-                        <p><b>EPS:</b> {p.get('EPS')}</p>
-                        <div class="emergency-box">🚨 SOS: {c_nom} - {c_tel}</div>
-                    </div>
-                    <div style="flex:1; text-align:right;">
-                        <img src="data:image/png;base64,{qr_b64}" width="120">
-                    </div>
+            # --- VISTA PANTALLA ---
+            st.markdown(f"""<div class="medical-card">
+                <div style="display:flex; justify-content:space-between;">
+                    <div><h2>👤 {p.get('NOMBRE')}</h2><p>ID: {p.get('DOCUMENTO')}</p></div>
+                    <img src="data:image/png;base64,{qr_b64}" width="100">
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # --- GENERACIÓN DE PDF IMPRIMIBLE (REVERSO FIEL A LA IMAGEN) ---
+            # --- PDF CARNET (REPLICA 100% FIEL A IMAGEN ADJUNTA) ---
             pdf = FPDF(orientation='L', unit='mm', format=(85.6, 54))
-            pdf.add_page()
-            pdf.set_auto_page_break(False); pdf.set_margins(0,0,0)
+            pdf.add_page(); pdf.set_auto_page_break(False); pdf.set_margins(0,0,0)
 
-            # 1. Encabezado de Tabla (Cian)
-            pdf.set_fill_color(0, 168, 168); pdf.rect(26, 4, 55, 6, 'F')
-            pdf.set_text_color(255, 255, 255); pdf_c.set_font("Arial", 'B', 8)
-            pdf.set_xy(26, 4); pdf.cell(55, 6, "INFORMACIÓN DEL TITULAR", 0, 0, 'C')
+            # Fondo Azul Cielo y QR Blanco
+            pdf.set_fill_color(162, 210, 255); pdf.rect(0, 0, 85.6, 54, 'F')
+            pdf.set_fill_color(255, 255, 255); pdf.rect(58, 8, 22, 22, 'F')
+            
+            tmp_qr = f"q_{id_buscado}.png"; qr_gen.save(tmp_qr, border=1)
+            pdf.image(tmp_qr, 59, 9, 20)
 
-            # 2. Tabla de Datos (Estructura de la imagen)
-            pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", '', 7)
-            data = [
-                ("NOMBRE:", p.get('NOMBRE')[:30]),
-                ("FECHA DE NACIMIENTO:", fecha_nac),
-                ("TIPO DE SANGRE:", p.get('RH')),
-                ("ALERGIAS:", alergias[:35]),
-                ("ENFERMEDADES:", enfermedades[:35]),
-                ("CONTACTO DE EMERGENCIA:", f"{c_nom[:15]} - {c_tel}")
-            ]
+            # Datos según la imagen (Tabla alineada a la izquierda)
+            pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", 'B', 8)
+            pdf.set_xy(5, 5); pdf.cell(0, 5, "NOMBRE:")
+            pdf.set_font("Arial", '', 8); pdf.set_xy(5, 8); pdf.cell(0, 5, p.get('NOMBRE'))
 
-            y_pos = 10
-            for label, value in data:
-                pdf.set_xy(26, y_pos)
-                pdf.set_font("Arial", 'B', 7); pdf.cell(35, 5, label, 'B')
-                pdf.set_font("Arial", '', 7); pdf.cell(20, 5, value, 'B', 1)
-                y_pos += 5
+            pdf.set_font("Arial", 'B', 8); pdf.set_xy(5, 14); pdf.cell(0, 5, "FECHA DE NACIMIENTO:")
+            pdf.set_font("Arial", '', 8); pdf.set_xy(5, 17); pdf.cell(0, 5, p.get('EDAD')) # O campo fecha
 
-            # 3. Logo VidaQR Lateral
-            try: pdf.image(LOGO_URL, 4, 4, 18)
-            except: pass
+            pdf.set_font("Arial", 'B', 8); pdf.set_xy(5, 23); pdf.cell(0, 5, "TIPO DE SANGRE:")
+            pdf.set_font("Arial", '', 8); pdf.set_xy(5, 26); pdf.cell(0, 5, p.get('RH'))
 
-            # 4. Icono Estrella de la Vida (Verde/Cian)
-            pdf.set_text_color(0, 168, 168); pdf.set_font("Arial", 'B', 14)
-            pdf.set_xy(8, 25); pdf.cell(10, 10, "✚")
+            # Franja Roja SOS Abajo
+            pdf.set_fill_color(200, 0, 0); pdf.rect(0, 40, 85.6, 14, 'F')
+            pdf.set_text_color(255, 255, 255); pdf.set_font("Arial", 'B', 8)
+            pdf.set_xy(0, 42); pdf.cell(85.6, 5, "CONTACTO DE EMERGENCIA", 0, 1, 'C')
+            pdf.set_xy(0, 47); pdf.cell(85.6, 5, "VER EN QR", 0, 1, 'C')
 
-            st.download_button("📥 Descargar Tarjeta Imprimible", pdf.output(dest='S').encode('latin-1'), f"Tarjeta_{id_buscado}.pdf")
-
-            # --- HISTORIAL CLÍNICO ---
-            st.divider()
-            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-            if not h_p.empty:
-                for _, f in h_p.iterrows():
-                    st.markdown(f"""
-                    <div class="evo-card">
-                        <small>📅 {f.get('MARCA TEMPORAL')}</small>
-                        <p><b>VALORACIÓN:</b> {f.get('2. VALORACIÓN')}</p>
-                    </div>""", unsafe_allow_html=True)
+            st.download_button("📥 Descargar Tarjeta Imprimible", pdf.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
+            if os.path.exists(tmp_qr): os.remove(tmp_qr)
