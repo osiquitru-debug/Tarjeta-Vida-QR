@@ -16,6 +16,12 @@ APP_BASE_URL = "https://tarjeta-vida-qr-abrilycompania.streamlit.app/"
 if 'menu' not in st.session_state:
     st.session_state.menu = "Inicio"
 
+# --- CAPTURA DE PARÁMETRO URL (para redirección desde QR) ---
+query_params = st.query_params
+if "doc" in query_params and st.session_state.menu != "Consulta":
+    st.session_state.menu = "Consulta"
+    st.session_state.doc_precargado = query_params["doc"]
+
 bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else "#f0f7f4"
 
 st.markdown(f"""
@@ -107,7 +113,6 @@ def generar_qr(documento):
     qr.add_data(url_paciente)
     qr.make(fit=True)
     img_qr = qr.make_image(fill_color="black", back_color="white")
-
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
     img_qr.save(tmp.name)
     tmp.close()
@@ -116,9 +121,21 @@ def generar_qr(documento):
 # --- 4. NAVEGACIÓN ---
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"; st.rerun()
-    if st.button("📝 Registrar", use_container_width=True): st.session_state.menu = "Registrar"; st.rerun()
-    if st.button("🔍 Consulta", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
+    if st.button("🏠 Inicio", use_container_width=True):
+        st.session_state.menu = "Inicio"
+        st.session_state.pop("doc_precargado", None)
+        st.query_params.clear()
+        st.rerun()
+    if st.button("📝 Registrar", use_container_width=True):
+        st.session_state.menu = "Registrar"
+        st.session_state.pop("doc_precargado", None)
+        st.query_params.clear()
+        st.rerun()
+    if st.button("🔍 Consulta", use_container_width=True):
+        st.session_state.menu = "Consulta"
+        st.session_state.pop("doc_precargado", None)
+        st.query_params.clear()
+        st.rerun()
 
 # --- 5. VISTAS ---
 st.image(LOGO_URL, width=220)
@@ -157,7 +174,10 @@ elif st.session_state.menu == "Registrar":
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA CLÍNICA")
-    id_buscado = st.text_input("Ingrese Documento").strip().split('.')[0].replace(" ", "")
+
+    # Precarga el documento si viene desde el QR
+    doc_default = st.session_state.get("doc_precargado", "")
+    id_buscado = st.text_input("Ingrese Documento", value=doc_default).strip().split('.')[0].replace(" ", "")
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
@@ -185,7 +205,7 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
-            # --- GENERAR QR ---
+            # --- GENERAR QR PARA PDF ---
             qr_path = generar_qr(id_buscado)
 
             # --- CONSTRUIR PDF CON QR ---
@@ -194,7 +214,6 @@ elif st.session_state.menu == "Consulta":
 
             # Logo
             try:
-                # Descargar logo temporalmente
                 logo_resp = requests.get(LOGO_URL, timeout=5)
                 logo_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
                 logo_tmp.write(logo_resp.content)
@@ -204,7 +223,7 @@ elif st.session_state.menu == "Consulta":
             except:
                 pass
 
-            # QR en esquina superior derecha
+            # QR esquina superior derecha
             try:
                 pdf.image(qr_path, x=165, y=8, w=35, h=35)
                 pdf.set_xy(155, 44)
@@ -241,7 +260,7 @@ elif st.session_state.menu == "Consulta":
             pdf.multi_cell(0, 5, info_p)
             pdf.ln(5)
 
-            # Historial
+            # Historial en PDF
             if not h_p.empty:
                 pdf.set_fill_color(183, 228, 199)
                 pdf.set_font("Arial", 'B', 10)
@@ -263,7 +282,7 @@ elif st.session_state.menu == "Consulta":
                     pdf.multi_cell(0, 4, txt_evo)
                     pdf.ln(2)
 
-            # Limpiar archivo QR temporal
+            # Limpiar QR temporal
             try:
                 os.unlink(qr_path)
             except:
@@ -281,9 +300,13 @@ elif st.session_state.menu == "Consulta":
             st.subheader("📱 Código QR del Paciente")
             col1, col2 = st.columns([1, 2])
             with col1:
-                # Regenerar QR para mostrarlo en pantalla
                 url_paciente = f"{APP_BASE_URL}?doc={id_buscado}"
-                qr2 = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=6, border=2)
+                qr2 = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_H,
+                    box_size=6,
+                    border=2
+                )
                 qr2.add_data(url_paciente)
                 qr2.make(fit=True)
                 img_qr2 = qr2.make_image(fill_color="black", back_color="white")
@@ -295,7 +318,7 @@ elif st.session_state.menu == "Consulta":
                 st.markdown(f"""
                 **🔗 Enlace directo:**  
                 `{url_paciente}`  
-                
+
                 Al escanear este QR se abrirá directamente  
                 la historia clínica de **{p.get('NOMBRE', 'el paciente')}**.
                 """)
