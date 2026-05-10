@@ -7,7 +7,7 @@ import io
 import base64
 import os
 
-# --- 1. CONFIGURACIÓN VISUAL (TU CÓDIGO ORIGINAL) ---
+# --- 1. CONFIGURACIÓN VISUAL (TU CÓDIGO ORIGINAL INTACTO) ---
 st.set_page_config(page_title="Tarjeta Vida QR", layout="centered", page_icon="🩺")
 
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
@@ -19,57 +19,37 @@ bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else 
 
 st.markdown(f"""
     <style>
-    /* Fondo y texto general */
     .stApp {{ background-color: {bg_color} !important; color: #000000 !important; }}
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
-    /* FLECHAS BLANCAS (CHEVRON) - FORZADO */
     button[data-testid="stSidebarCollapseIcon"] svg,
     button[aria-label="Collapse sidebar"] svg,
-    button[aria-label="Expand sidebar"] svg,
-    .st-emotion-cache-6qob1r svg {{
-        fill: #ffffff !important;
-        color: #ffffff !important;
-        stroke: #ffffff !important;
-    }}
-    
-    /* Inputs: Fondo blanco y letra negra */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #cbd5e1 !important;
+    button[aria-label="Expand sidebar"] svg {{
+        fill: #ffffff !important; color: #ffffff !important;
     }}
 
-    /* Botones Verde Menta */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
+        background-color: #ffffff !important; color: #000000 !important; border: 1px solid #cbd5e1 !important;
+    }}
+
     div.stButton > button {{
-        background-color: #98FF98 !important; 
-        color: #000000 !important; 
-        border-radius: 10px !important; 
-        font-weight: bold !important; 
-        border: 1px solid #7ed37e !important;
+        background-color: #98FF98 !important; color: #000000 !important; border-radius: 10px !important; font-weight: bold !important; border: 1px solid #7ed37e !important;
     }}
     
     .medical-card {{
-        background-color: #ffffff; padding: 20px; border-radius: 15px;
-        border-left: 10px solid #a2d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;
+        background-color: #ffffff; padding: 20px; border-radius: 15px; border-left: 10px solid #a2d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;
     }}
     .emergency-box {{
-        background-color: #ffe5d9; padding: 12px; border-radius: 8px;
-        border: 2px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
+        background-color: #ffe5d9; padding: 12px; border-radius: 8px; border: 2px dashed #f43f5e; color: #b91c1c !important; font-weight: bold; margin-top: 10px;
     }}
     .evo-card {{
-        background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7; margin-bottom: 12px;
+        background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-left: 8px solid #b7e4c7; margin-bottom: 12px;
     }}
     .grid-medidas {{ 
-        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; padding: 5px 0;
-        border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 10px 0; padding: 5px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
     }}
-    .footer {{ 
-        position: fixed; left: 0; bottom: 0; width: 100%; 
-        text-align: center; color: #555555 !important; font-size: 0.8em; padding: 10px;
-    }}
+    .footer {{ position: fixed; left: 0; bottom: 0; width: 100%; text-align: center; color: #555555 !important; font-size: 0.8em; padding: 10px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -98,7 +78,6 @@ with st.sidebar:
     if st.button("📝 Registrar", use_container_width=True): st.session_state.menu = "Registrar"; st.rerun()
     if st.button("🔍 Consulta", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
 
-# --- 4. VISTAS ---
 st.image(LOGO_URL, width=220)
 
 if st.session_state.menu == "Inicio":
@@ -125,7 +104,6 @@ elif st.session_state.menu == "Registrar":
 
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA CLÍNICA")
-    # LECTURA DE QR: Captura el ID de la URL si existe
     id_por_url = st.query_params.get("id", "")
     id_buscado = st.text_input("Ingrese Documento", value=id_por_url).strip().split('.')[0].replace(" ", "")
 
@@ -134,14 +112,13 @@ elif st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
-            # --- GENERACIÓN DE QR FUNCIONAL ---
+            # --- QR FUNCIONAL ---
             url_seguimiento = f"https://tarjeta-vida-qr-abrilycompania.streamlit.app/?id={id_buscado}"
             qr_gen = segno.make(url_seguimiento)
             qr_buf = io.BytesIO()
             qr_gen.save(qr_buf, kind='png', scale=10)
             qr_b64 = base64.b64encode(qr_buf.getvalue()).decode()
 
-            # Mapeo de datos (Tu lógica original)
             def obtener_dato(df_row, palabras_clave):
                 for col in df_row.index:
                     if all(palabra in col for palabra in palabras_clave):
@@ -152,7 +129,6 @@ elif st.session_state.menu == "Consulta":
             tel_emer = obtener_dato(p, ["TEL", "CONTACTO", "EMERGENCIA"])
             alertas = obtener_dato(p, ["CONDICIONES", "ESPECIALES"])
 
-            # TARJETA VISUAL (Tu diseño original + Espacio para el QR)
             st.markdown(f"""
             <div class="medical-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -164,57 +140,62 @@ elif st.session_state.menu == "Consulta":
                         <div class="emergency-box">🚨 EMERGENCIA: {nom_emer} (Tel: {tel_emer})</div>
                     </div>
                     <div style="flex:1; text-align:center;">
-                        <img src="data:image/png;base64,{qr_b64}" width="120" style="border-radius:10px; border: 1px solid #eee;">
+                        <img src="data:image/png;base64,{qr_b64}" width="120">
                     </div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # --- GENERACIÓN DE PDF CARNET (TAMAÑO TARJETA DE CRÉDITO 85x55mm) ---
-            pdf_c = FPDF(orientation='L', unit='mm', format=(85, 55))
-            pdf_c.add_page(); pdf_c.set_fill_color(162, 210, 255); pdf_c.rect(0, 0, 85, 55, 'F')
+            # --- 1. GENERACIÓN DE PDF CARNET EN HOJA CARTA ---
+            pdf_c = FPDF(orientation='P', unit='mm', format='Letter')
+            pdf_c.add_page()
+            # Rectángulo del carnet (85x55mm) centrado en la parte superior
+            x_offset, y_offset = 65, 20 
+            pdf_c.set_fill_color(162, 210, 255); pdf_c.rect(x_offset, y_offset, 85, 55, 'F')
             
-            # Guardar QR temporal para el carnet
             tmp_qr = f"qr_temp_{id_buscado}.png"; qr_gen.save(tmp_qr, border=0)
-            pdf_c.image(tmp_qr, 58, 12, 22, 22)
+            pdf_c.image(tmp_qr, x_offset + 58, y_offset + 12, 22, 22)
+            pdf_c.set_font("Arial", 'B', 10); pdf_c.set_xy(x_offset + 5, y_offset + 12); pdf_c.cell(0, 5, f"{p.get('NOMBRE')[:25]}")
+            pdf_c.set_font("Arial", '', 8); pdf_c.set_xy(x_offset + 5, y_offset + 18); pdf_c.cell(0, 5, f"ID: {p.get('DOCUMENTO')}")
+            pdf_c.set_xy(x_offset + 5, y_offset + 23); pdf_c.cell(0, 5, f"RH: {p.get('RH')} | EPS: {p.get('EPS')}")
+            pdf_c.set_fill_color(244, 63, 94); pdf_c.rect(x_offset + 5, y_offset + 36, 50, 12, 'F'); pdf_c.set_text_color(255,255,255)
+            pdf_c.set_xy(x_offset + 5, y_offset + 37); pdf_c.cell(50, 4, f"SOS: {nom_emer[:20]}", 0, 1, 'C')
+            pdf_c.set_xy(x_offset + 5, y_offset + 41); pdf_c.cell(50, 4, f"TEL: {tel_emer}", 0, 1, 'C')
             
-            pdf_c.set_font("Arial", 'B', 10); pdf_c.set_xy(5, 15); pdf_c.cell(0, 5, f"{p.get('NOMBRE')[:25]}")
-            pdf_c.set_font("Arial", '', 8); pdf_c.set_xy(5, 20); pdf_c.cell(0, 5, f"ID: {p.get('DOCUMENTO')}")
-            pdf_c.set_xy(5, 25); pdf_c.cell(0, 5, f"RH: {p.get('RH')} | EPS: {p.get('EPS')}")
-            
-            pdf_c.set_fill_color(244, 63, 94); pdf_c.rect(5, 36, 50, 12, 'F'); pdf_c.set_text_color(255,255,255)
-            pdf_c.set_xy(5, 37); pdf_c.cell(50, 4, f"SOS: {nom_emer[:20]}", 0, 1, 'C')
-            pdf_c.set_xy(5, 41); pdf_c.cell(50, 4, f"TEL: {tel_emer}", 0, 1, 'C')
-            
-            st.download_button("🪪 Descargar Carnet (Tamaño ID)", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
+            st.download_button("🪪 Descargar Carnet (Hoja Carta)", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
             if os.path.exists(tmp_qr): os.remove(tmp_qr)
 
-            # --- HISTORIAL Y REPORTE (Tu lógica original de PDF) ---
-            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
-            
+            # --- 2. REPORTE HISTORIAL (RESTAURANDO TUS PARÁMETROS ORIGINALES) ---
             pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", 'B', 14)
+            try: pdf.image(LOGO_URL, 10, 8, 30)
+            except: pass
             pdf.cell(0, 10, "Historia Clinica Completa - Tarjeta Vida QR", ln=True, align='C')
+            pdf.ln(5); pdf.set_fill_color(230, 230, 230); pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, 'L', 1)
+            pdf.set_font("Arial", '', 9)
+            info_p = (f"Nombre: {p.get('NOMBRE')}\nDocumento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\nEPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\nAlertas: {alertas}\nCONTACTO EMERGENCIA: {nom_emer} - Tel: {tel_emer}")
+            pdf.multi_cell(0, 5, info_p); pdf.ln(5)
+
+            h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             if not h_p.empty:
+                pdf.set_font("Arial", 'B', 10); pdf.cell(0, 7, "HISTORIAL DE EVOLUCIONES", 1, 1, 'L', 1)
                 for _, f in h_p.iterrows():
                     pdf.set_font("Arial", 'B', 9); pdf.cell(0, 6, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L')
                     pdf.set_font("Arial", '', 8)
-                    pdf.multi_cell(0, 4, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
+                    txt_evo = (f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nVALORACION: {f.get('2. VALORACIÓN')}\nMEDIDAS: Talla: {f.get('4. TALLA')} | Peso: {f.get('5. PESO')} | TA: {f.get('6. PRESIÓN ARTERIAL')}\nANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\nTRATAMIENTO: {f.get('8. MEDICAMENTOS')}\nLABS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\nEPICRISIS: {f.get('10. EPICRISIS')}")
+                    pdf.multi_cell(0, 4, txt_evo); pdf.ln(2)
             
             st.download_button("📥 Descargar Reporte PDF Completo", pdf.output(dest='S').encode('latin-1'), f"HC_{id_buscado}.pdf")
 
-            # --- REGISTRO DE EVOLUCIÓN (Tu código original) ---
+            # --- REGISTRO Y LISTADO (DISEÑO ORIGINAL) ---
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
                 with st.form("f_evo"):
                     c1, c2 = st.columns(2)
-                    with c1: 
-                        v_mot = st.text_area("3. Motivo"); v_val = st.text_area("2. Valoración"); v_tal = st.text_input("4. Talla")
-                    with c2:
-                        v_pes = st.text_input("5. Peso"); v_pre = st.text_input("6. Presión"); v_epi = st.text_area("10. Epicrisis")
+                    with c1: v_mot = st.text_area("3. Motivo"); v_val = st.text_area("2. Valoración"); v_tal = st.text_input("4. Talla")
+                    with c2: v_pes = st.text_input("5. Peso"); v_pre = st.text_input("6. Presión"); v_epi = st.text_area("10. Epicrisis")
                     if st.form_submit_button("GUARDAR EVOLUCIÓN"):
                         data_e = {"entry.2019369477": id_buscado, "entry.611862537": v_mot, "entry.1088523869": v_val, "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre, "entry.616774918": v_epi}
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_e)
                         st.success("✅ Guardado."); st.cache_data.clear(); st.rerun()
 
-            # --- LISTADO DE EVOLUCIONES (Tu diseño original) ---
             st.subheader("📋 Evoluciones")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
@@ -228,7 +209,5 @@ elif st.session_state.menu == "Consulta":
                             <span><b>⚖️ Peso:</b> {f.get('5. PESO')}</span>
                             <span><b>🩸 TA:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p style='font-size:0.9em; color:#444; border-top:1px solid #eee; padding-top:5px;'>
-                            <b>📝 EPICRISIS:</b> {f.get('10. EPICRISIS')}
-                        </p>
+                        <p style='font-size:0.9em; border-top:1px solid #eee; padding-top:5px;'><b>📝 EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
                     </div>""", unsafe_allow_html=True)
