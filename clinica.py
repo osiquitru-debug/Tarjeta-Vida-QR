@@ -18,7 +18,7 @@ from reportlab.lib.utils import ImageReader
 # ─────────────────────────────────────────────
 st.set_page_config(page_title="Tarjeta Vida QR", layout="centered", page_icon="🩺")
 
-LOGO_URL    = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
+LOGO_URL     = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 APP_BASE_URL = "https://tarjeta-vida-qr-abrilycompania.streamlit.app/"
 
 if "menu" not in st.session_state:
@@ -149,7 +149,6 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
 
     # ── Ola teal encima de la franja ─────────
     c.setFillColor(colors.HexColor("#1B2E5E"))
-    # curva superior de la franja: paths con bezier
     p_wave = c.beginPath()
     p_wave.moveTo(0, franja_h)
     p_wave.curveTo(W*0.25, franja_h + 4*mm,
@@ -252,7 +251,6 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.drawCentredString(ebox_x + ebox_w/2, ebox_y + 4.5*mm, "ESTA TARJETA PUEDE")
     c.drawCentredString(ebox_x + ebox_w/2, ebox_y + 1.8*mm, "SALVAR TU VIDA")
 
-    # ── Página 1 terminada ────────────────────
     c.showPage()
 
     # ══════════════════════════════════════════
@@ -284,8 +282,8 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     # Textos franja tricolor
     c.setFillColor(colors.white)
     c.setFont("Helvetica-Bold", 3.0)
-    c.drawCentredString(tercio/2,       5.2*mm, "🔒 TUS DATOS ESTÁN")
-    c.drawCentredString(tercio/2,       2.5*mm, "PROTEGIDOS")
+    c.drawCentredString(tercio/2,          5.2*mm, "🔒 TUS DATOS ESTÁN")
+    c.drawCentredString(tercio/2,          2.5*mm, "PROTEGIDOS")
     c.drawCentredString(tercio + tercio/2, 5.2*mm, "⏰ ACCESO RÁPIDO")
     c.drawCentredString(tercio + tercio/2, 2.5*mm, "Y SEGURO 24/7")
     c.drawCentredString(2*tercio+tercio/2, 5.2*mm, "⚙️ ACTUALIZA TU INFO")
@@ -305,7 +303,7 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.setFont("Helvetica-Bold", 3.0)
     c.drawString(1.8*mm, H - 20*mm, "TARJETA INTELIGENTE DE SALUD")
 
-    # Símbolo médico (estrella de vida)
+    # Símbolo médico
     c.setFillColor(colors.HexColor("#00897b"))
     c.setFont("Helvetica-Bold", 16)
     c.drawString(5*mm, H - 38*mm, "✚")
@@ -321,10 +319,10 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
 
     # Puntos decorativos cara posterior
     deco_back = [
-        (colors.HexColor("#f9a825"), W-4*mm,   H-4*mm,  1.0*mm),
-        (colors.HexColor("#7c4dff"), W-3*mm,   H-10*mm, 0.8*mm),
-        (colors.HexColor("#e91e8c"), W-7*mm,   H-4*mm,  0.7*mm),
-        (colors.HexColor("#00bcd4"), W-6*mm,   H-15*mm, 0.7*mm),
+        (colors.HexColor("#f9a825"), W-4*mm,  H-4*mm,  1.0*mm),
+        (colors.HexColor("#7c4dff"), W-3*mm,  H-10*mm, 0.8*mm),
+        (colors.HexColor("#e91e8c"), W-7*mm,  H-4*mm,  0.7*mm),
+        (colors.HexColor("#00bcd4"), W-6*mm,  H-15*mm, 0.7*mm),
     ]
     for col, dx, dy, r in deco_back:
         c.setFillColor(col)
@@ -335,10 +333,9 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.drawString(W-9*mm, H-6*mm, "+")
 
     # ── Tabla de datos del titular ─────────────
-    # Encabezado teal
-    tab_x = 26 * mm
-    tab_y = H - 2*mm
-    tab_w = W - tab_x - 1.5*mm
+    tab_x  = 26 * mm
+    tab_y  = H - 2*mm
+    tab_w  = W - tab_x - 1.5*mm
     head_h = 6 * mm
 
     c.setFillColor(colors.HexColor("#00897b"))
@@ -347,7 +344,6 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.setFont("Helvetica-Bold", 4.5)
     c.drawCentredString(tab_x + tab_w/2, tab_y - head_h + 2*mm, "INFORMACIÓN DEL TITULAR")
 
-    # Filas de datos — solo los campos registrados en la app
     filas = [
         ("👤", "NOMBRE:",              nombre[:28]),
         ("🪪", "DOCUMENTO:",           doc_raw),
@@ -360,23 +356,17 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     row_h_val = 7.2 * mm
     for i, (icon, label, valor) in enumerate(filas):
         ry = tab_y - head_h - (i + 1) * row_h_val
-        # Fondo alterno
         c.setFillColor(colors.HexColor("#f0fdfa") if i % 2 == 0 else colors.white)
         c.rect(tab_x, ry, tab_w, row_h_val, fill=1, stroke=0)
-        # Línea separadora
         c.setStrokeColor(colors.HexColor("#b2dfdb"))
         c.setLineWidth(0.3)
         c.line(tab_x, ry + row_h_val, tab_x + tab_w, ry + row_h_val)
-
-        # Ícono
         c.setFont("Helvetica", 4.2)
         c.setFillColor(colors.HexColor("#00897b"))
         c.drawString(tab_x + 1*mm, ry + 2.5*mm, icon)
-        # Etiqueta
         c.setFont("Helvetica-Bold", 3.5)
         c.setFillColor(colors.HexColor("#1B2E5E"))
         c.drawString(tab_x + 4.5*mm, ry + 4.2*mm, label)
-        # Valor
         c.setFont("Helvetica", 3.5)
         c.setFillColor(colors.HexColor("#333333"))
         c.drawString(tab_x + 4.5*mm, ry + 1.5*mm, str(valor))
@@ -384,7 +374,6 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.showPage()
     c.save()
 
-    # Limpiar temporales
     for f in [_qr, _log]:
         try:
             if f: os.unlink(f)
@@ -442,19 +431,33 @@ elif st.session_state.menu == "Registrar":
         st.subheader("🚨 Emergencia")
         enom = st.text_input("Nombre Contacto")
         etel = st.text_input("Teléfono Contacto")
+
         if st.form_submit_button("GUARDAR PACIENTE"):
             payload = {
-                "entry.346175428": nom,  "entry.1650757004": tdoc,
-                "entry.1302424820": ndoc, "entry.1801154005": ed,
-                "entry.1172011247": ep,   "entry.162368130":  rh,
-                "entry.1892763134": enom, "entry.2011749615": etel,
-                "entry.celular_id": cel
+                "entry.346175428":  nom,
+                "entry.1650757004": tdoc,
+                "entry.1302424820": ndoc,
+                "entry.1801154005": ed,
+                "entry.1043165037": cel,   # ✅ CORREGIDO (antes: entry.celular_id)
+                "entry.1172011247": ep,
+                "entry.162368130":  rh,
+                "entry.346363":     alert, # ✅ AGREGADO (condiciones especiales)
+                "entry.1892763134": enom,
+                "entry.2011749615": etel,
             }
-            requests.post(
-                "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse",
-                data=payload)
-            st.success("✅ Guardado.")
-            st.cache_data.clear()
+            try:
+                resp = requests.post(
+                    "https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse",
+                    data=payload,
+                    timeout=10
+                )
+                if resp.status_code in [200, 302]:
+                    st.success("✅ Paciente registrado correctamente.")
+                    st.cache_data.clear()
+                else:
+                    st.error(f"❌ Error al guardar. Código HTTP: {resp.status_code}")
+            except Exception as e:
+                st.error(f"❌ Error de conexión: {e}")
 
 # ── CONSULTA ──────────────────────────────────
 elif st.session_state.menu == "Consulta":
@@ -606,17 +609,33 @@ elif st.session_state.menu == "Consulta":
                         v_med = st.text_area("8. Medicamentos")
                         v_lab = st.text_area("9. Laboratorios")
                         v_epi = st.text_area("10. Epicrisis")
+
                     if st.form_submit_button("GUARDAR EVOLUCIÓN"):
-                        requests.post(
-                            "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse",
-                            data={
-                                "entry.2019369477": id_buscado, "entry.611862537": v_mot,
-                                "entry.1088523869": v_val,      "entry.1275746503": v_tal,
-                                "entry.949747647":  v_pes,      "entry.2091389798": v_pre,
-                                "entry.2016051626": v_med,      "entry.616774918":  v_epi
-                            })
-                        st.success("✅ Guardado.")
-                        st.cache_data.clear(); st.rerun()
+                        try:
+                            resp = requests.post(
+                                "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse",
+                                data={
+                                    "entry.2019369477": id_buscado,
+                                    "entry.1088523869": v_val,
+                                    "entry.611862537":  v_mot,
+                                    "entry.1275746503": v_tal,
+                                    "entry.949747647":  v_pes,
+                                    "entry.2091389798": v_pre,
+                                    "entry.889985940":  v_ant,  # ✅ AGREGADO (antecedentes)
+                                    "entry.2016051626": v_med,
+                                    "entry.882053172":  v_lab,  # ✅ AGREGADO (laboratorios)
+                                    "entry.616774918":  v_epi,
+                                },
+                                timeout=10
+                            )
+                            if resp.status_code in [200, 302]:
+                                st.success("✅ Evolución guardada correctamente.")
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Error al guardar. Código HTTP: {resp.status_code}")
+                        except Exception as e:
+                            st.error(f"❌ Error de conexión: {e}")
 
             # ── Evoluciones ────────────────────────
             st.subheader("📋 Evoluciones")
