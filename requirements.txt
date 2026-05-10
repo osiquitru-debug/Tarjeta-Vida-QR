@@ -1,5 +1,6 @@
+streamlit
 pandas
 requests
 fpdf
-streamlit
-segno
+qrcode[pil]
+Pillow
