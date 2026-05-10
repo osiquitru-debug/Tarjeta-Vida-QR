@@ -5,12 +5,7 @@ from fpdf import FPDF
 import segno
 import io
 import base64
-
-# --- CLASE TÉCNICA PARA EVITAR ERRORES EN PDF ---
-class NamedBytesIO(io.BytesIO):
-    def __init__(self, content, name):
-        super().__init__(content)
-        self.name = name
+import os  # Necesario para manejar el archivo temporal
 
 # --- 1. CONFIGURACIÓN VISUAL Y ESTILOS ---
 st.set_page_config(page_title="Tarjeta Vida QR", layout="centered", page_icon="🩺")
@@ -20,7 +15,6 @@ LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
 if 'menu' not in st.session_state: 
     st.session_state.menu = "Inicio"
 
-# Colores según la sección
 bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else "#f0f7f4"
 
 st.markdown(f"""
@@ -29,9 +23,8 @@ st.markdown(f"""
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; border-right: 2px solid #d4a5a5; }}
     h1, h2, h3, p, span, label, li, div, .stMarkdown {{ color: #000000 !important; }}
 
-    /* FLECHAS BLANCAS (CHEVRON) */
-    [data-testid="stSidebarCollapseIcon"] svg, [data-testid="collapsedControl"] svg,
-    button[aria-label="Collapse sidebar"] svg, button[aria-label="Expand sidebar"] svg {{
+    /* FLECHAS BLANCAS */
+    [data-testid="stSidebarCollapseIcon"] svg, [data-testid="collapsedControl"] svg {{
         fill: #ffffff !important; color: #ffffff !important;
     }}
 
@@ -58,7 +51,7 @@ st.markdown(f"""
         font-weight: bold; border: 1px solid #ffffff;
     }}
 
-    /* ESTILOS EVOLUCIONES (7 DE MAYO) */
+    /* ESTILOS EVOLUCIONES */
     .evo-card {{
         background-color: #ffffff; padding: 18px; border-radius: 12px;
         border-left: 8px solid #b7e4c7; margin-bottom: 15px; border-top: 1px solid #eee;
@@ -106,7 +99,6 @@ if st.session_state.menu == "Inicio":
     st.image(LOGO_URL, width=280)
     st.title("🩺 Tarjeta Vida QR")
     st.markdown("### *Tu Información de Salud Siempre Contigo*")
-    st.info("Utilice el menú lateral para registrar pacientes o consultar historiales mediante QR.")
 
 elif st.session_state.menu == "Registrar":
     st.title("📝 REGISTRO DE PACIENTE")
@@ -117,35 +109,28 @@ elif st.session_state.menu == "Registrar":
             cel = st.text_input("Celular")
         with c2:
             ed = st.text_input("Edad"); ep = st.text_input("EPS"); rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        alert = st.text_area("Condiciones Especiales (Alergias, Enfermedades)")
-        st.subheader("🚨 Contacto de Emergencia")
-        enom = st.text_input("Nombre Contacto"); etel = st.text_input("Teléfono Contacto")
-        
+        alert = st.text_area("Condiciones Especiales")
+        enom = st.text_input("Nombre Contacto Emergencia"); etel = st.text_input("Teléfono Contacto")
         if st.form_submit_button("GUARDAR PACIENTE"):
-            payload = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh, "entry.1892763134": enom, "entry.2011749615": etel, "entry.celular_id": cel}
+            payload = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh, "entry.1892763134": enom, "entry.2011749615": etel}
             requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
-            st.success(f"✅ Paciente {nom} guardado.")
-            st.cache_data.clear()
+            st.success("✅ Guardado."); st.cache_data.clear()
 
 elif st.session_state.menu == "Consulta":
-    st.title("🔍 CONSULTA Y CARNET QR")
+    st.title("🔍 CONSULTA")
     id_buscado = st.text_input("Ingrese Documento", value=st.query_params.get("id", "")).strip().replace(" ", "")
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
         if not paciente.empty:
             p = paciente.iloc[0]
-            
-            def obtener_dato(df_row, claves):
-                for col in df_row.index:
-                    if all(c in col for c in claves): return df_row[col]
-                return "No registra"
+            nom_e = "No registra"; tel_e = "No registra"
+            # Lógica para extraer datos de emergencia
+            for col in p.index:
+                if "NOMBRE" in col and "EMERGENCIA" in col: nom_e = p[col]
+                if "TEL" in col and "EMERGENCIA" in col: tel_e = p[col]
 
-            nom_e = obtener_dato(p, ["NOMBRE", "CONTACTO", "EMERGENCIA"])
-            tel_e = obtener_dato(p, ["TEL", "CONTACTO", "EMERGENCIA"])
-            alert_p = obtener_dato(p, ["CONDICIONES", "ESPECIALES"])
-            
-            # --- CARNET DIGITAL ESTILO IMAGEN ---
+            # Visualización Carnet
             url_p = f"https://tarjeta-vida-qr-abrilycompania.streamlit.app/?id={id_buscado}"
             qr_b64 = get_qr_base64(url_p)
 
@@ -164,12 +149,11 @@ elif st.session_state.menu == "Consulta":
                     </div>
                     <div class="carnet-qr">
                         <img src="data:image/png;base64,{qr_b64}" width="115">
-                        <p style="font-size: 10px; margin-top:5px; font-weight:bold;">ESCANÉAME</p>
                     </div>
                 </div>
             </div>""", unsafe_allow_html=True)
             
-            # --- BOTÓN DESCARGAR CARNET (PDF CORREGIDO) ---
+            # --- SOLUCIÓN DEFINITIVA PARA EL PDF ---
             pdf_c = FPDF(orientation='L', unit='mm', format=(85, 55))
             pdf_c.add_page()
             pdf_c.set_fill_color(162, 210, 255)
@@ -184,43 +168,46 @@ elif st.session_state.menu == "Consulta":
             pdf_c.text(5, 42, f"SOS: {nom_e[:20]}")
             pdf_c.text(5, 47, f"TEL: {tel_e}")
             
-            qr_obj = segno.make(url_p)
-            qr_img_buff = io.BytesIO()
-            qr_obj.save(qr_img_buff, kind='png', border=0)
-            named_buff = NamedBytesIO(qr_img_buff.getvalue(), "qr.png")
-            pdf_c.image(named_buff, x=55, y=12, w=25, h=25)
-
-            st.download_button("📥 Descargar Tarjeta Digital", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
-
-            # --- HISTORIAL DETALLADO (ESTILO 7 DE MAYO) ---
-            st.divider()
-            st.subheader("📋 HISTORIAL CLÍNICO DETALLADO")
+            # Guardar QR temporalmente como archivo físico para evitar el error .rfind
+            temp_qr_path = f"temp_qr_{id_buscado}.png"
+            qr_temp = segno.make(url_p)
+            qr_temp.save(temp_qr_path, border=0)
             
+            # Insertar imagen desde el archivo real
+            pdf_c.image(temp_qr_path, x=55, y=12, w=25, h=25)
+            
+            # Mostrar botón de descarga
+            st.download_button("📥 Descargar Tarjeta Digital", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
+            
+            # Limpiar el archivo temporal
+            if os.path.exists(temp_qr_path):
+                os.remove(temp_qr_path)
+
+            # --- SECCIÓN DE EVOLUCIONES (7 DE MAYO) ---
+            st.divider()
+            st.subheader("📋 HISTORIAL DETALLADO")
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
 
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
                 with st.form("f_evo"):
                     c1, c2 = st.columns(2)
-                    with c1: v_mot = st.text_area("Motivo Consulta"); v_val = st.text_area("Valoración"); v_ant = st.text_area("Antecedentes"); v_tal = st.text_input("Talla")
+                    with c1: v_mot = st.text_area("Motivo"); v_val = st.text_area("Valoración"); v_ant = st.text_area("Antecedentes"); v_tal = st.text_input("Talla")
                     with c2: v_pes = st.text_input("Peso"); v_pre = st.text_input("Presión Arterial"); v_med = st.text_area("Medicamentos"); v_lab = st.text_area("Laboratorios"); v_epi = st.text_area("Epicrisis")
-                    if st.form_submit_button("GUARDAR EVOLUCIÓN"):
+                    if st.form_submit_button("GUARDAR"):
                         data_e = {"entry.2019369477": id_buscado, "entry.611862537": v_mot, "entry.1088523869": v_val, "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre, "entry.2016051626": v_med, "entry.616774918": v_epi}
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=data_e)
-                        st.success("✅ Evolución guardada."); st.cache_data.clear(); st.rerun()
+                        st.success("Guardado."); st.cache_data.clear(); st.rerun()
 
             if not h_p.empty:
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
                     <div class="evo-card">
-                        <small>📅 <b>FECHA:</b> {f.get('MARCA TEMPORAL')}</small>
+                        <small>📅 {f.get('MARCA TEMPORAL')}</small>
                         <p><b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}</p>
                         <div class="grid-medidas">
                             <span><b>📏 Talla:</b> {f.get('4. TALLA')}</span>
                             <span><b>⚖️ Peso:</b> {f.get('5. PESO')}</span>
                             <span><b>🩸 TA:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p><b>💊 MEDICAMENTOS:</b> {f.get('8. MEDICAMENTOS')}</p>
                         <p><b>📝 EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
                     </div>""", unsafe_allow_html=True)
-            else:
-                st.warning("No hay evoluciones registradas para este paciente.")
