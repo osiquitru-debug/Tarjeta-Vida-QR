@@ -7,7 +7,7 @@ import io
 import base64
 import os
 
-# --- 1. CONFIGURACIÓN VISUAL Y ESTILOS ---
+# --- 1. CONFIGURACIÓN Y ESTILOS (FIDELIDAD ESTÉTICA) ---
 st.set_page_config(page_title="Tarjeta Vida QR", layout="centered", page_icon="🩺")
 
 LOGO_URL = "https://i.postimg.cc/bNJKtpsQ/vidaqr.jpg"
@@ -17,15 +17,13 @@ if 'menu' not in st.session_state:
 
 st.markdown(f"""
     <style>
-    /* Fondo general verde suave */
     .stApp {{ background-color: #D8F3DC !important; }}
     [data-testid="stSidebar"] {{ background-color: #E5B1B1 !important; }}
     
-    /* Forzar texto negro en toda la app */
-    h1, h2, h3, p, span, label, div, .stMarkdown {{ color: #000000 !important; }}
-    .stTextInput input, .stTextArea textarea {{ color: #000000 !important; }}
+    /* Textos en negro puro para legibilidad */
+    h1, h2, h3, p, span, label, div {{ color: #000000 !important; font-family: 'Arial', sans-serif; }}
 
-    /* DISEÑO CARNET (AZUL CIELO) */
+    /* CARNET AZUL CIELO */
     .carnet-container {{
         background-color: #a2d2ff;
         border-radius: 15px;
@@ -37,22 +35,24 @@ st.markdown(f"""
     }}
     .carnet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }}
     .carnet-body {{ display: flex; gap: 15px; }}
-    .carnet-info {{ flex: 2; }}
     .carnet-qr-white {{ flex: 1; background: white; padding: 10px; border-radius: 10px; text-align: center; }}
     .label-sos-rojo {{
         background-color: #f43f5e; color: white !important; padding: 10px;
         border-radius: 8px; font-size: 13px; margin-top: 10px; font-weight: bold; text-align: center;
     }}
     
-    /* TARJETAS DE EVOLUCIÓN */
+    /* CELDAS DE EVOLUCIÓN (BLANCAS) */
     .evo-card {{
-        background-color: #ffffff; padding: 18px; border-radius: 12px;
-        border-left: 10px solid #b7e4c7; margin-bottom: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05); color: #000;
+        background-color: #ffffff !important; 
+        padding: 20px; 
+        border-radius: 12px;
+        border-left: 10px solid #b7e4c7; 
+        margin-bottom: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
     }}
     .grid-datos {{ 
         display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; 
-        background: #f1f5f9; padding: 10px; border-radius: 8px; margin: 10px 0;
+        background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #eee; margin: 10px 0;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -75,38 +75,51 @@ def cargar_datos():
 
 df_p, df_h = cargar_datos()
 
-# --- 3. NAVEGACIÓN (BARRA LATERAL) ---
+# --- 3. BARRA LATERAL ---
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
-    if st.button("🏠 Inicio", use_container_width=True): st.session_state.menu = "Inicio"; st.rerun()
-    if st.button("📝 Registrar Paciente", use_container_width=True): st.session_state.menu = "Registrar"; st.rerun()
-    if st.button("🔍 Consulta y Carnet", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
+    st.markdown("---")
+    if st.button("🏠 INICIO", use_container_width=True): st.session_state.menu = "Inicio"; st.rerun()
+    if st.button("📝 REGISTRAR PACIENTE", use_container_width=True): st.session_state.menu = "Registrar"; st.rerun()
+    if st.button("🔍 CONSULTA Y CARNET", use_container_width=True): st.session_state.menu = "Consulta"; st.rerun()
+    st.markdown("---")
+    st.caption("© 2026 Vida QR - Abrilycompañia")
 
 # --- 4. VISTA INICIO ---
 if st.session_state.menu == "Inicio":
-    st.title("🩺 Bienvenido a Vida QR")
-    st.image(LOGO_URL, width=250)
-    st.markdown("### Gestión Médica y Carnetización Digital")
+    st.title("🩺 Sistema Vida QR")
+    st.image(LOGO_URL, width=300)
+    st.markdown("## *'Tu información médica vital, siempre contigo.'*")
+    st.write("Bienvenido al ecosistema de gestión de salud rural y urbana.")
 
-# --- 5. VISTA REGISTRAR PACIENTE ---
+# --- 5. VISTA REGISTRAR ---
 elif st.session_state.menu == "Registrar":
     st.title("📝 Registro de Paciente")
-    with st.form("f_reg", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            nom = st.text_input("Nombre Completo"); tdoc = st.selectbox("Tipo Doc", ["CC", "TI", "CE", "RC"]); ndoc = st.text_input("Documento")
-        with c2:
-            ed = st.text_input("Edad"); ep = st.text_input("EPS"); rh = st.selectbox("RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
-        e_nom = st.text_input("Nombre Contacto Emergencia"); e_tel = st.text_input("Teléfono Emergencia")
-        if st.form_submit_button("GUARDAR"):
-            pay = {"entry.346175428": nom, "entry.1650757004": tdoc, "entry.1302424820": ndoc, "entry.1801154005": ed, "entry.1172011247": ep, "entry.162368130": rh, "entry.1892763134": e_nom, "entry.2011749615": e_tel}
-            requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=pay)
-            st.success("Paciente guardado."); st.cache_data.clear()
+    with st.form("f_registro"):
+        col1, col2 = st.columns(2)
+        with col1:
+            nombre = st.text_input("Nombre Completo")
+            tipo_doc = st.selectbox("Tipo de Documento", ["CC", "TI", "CE", "RC"])
+            documento = st.text_input("Número de Documento")
+        with col2:
+            edad = st.text_input("Edad")
+            eps = st.text_input("EPS")
+            rh = st.selectbox("Factor RH", ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"])
+        
+        st.subheader("🚨 Contacto de Emergencia")
+        e_nombre = st.text_input("Nombre del Contacto")
+        e_tel = st.text_input("Teléfono del Contacto")
+        
+        if st.form_submit_button("GUARDAR DATOS"):
+            # Enlace a tu Google Form de Pacientes
+            payload = {"entry.346175428": nombre, "entry.1650757004": tipo_doc, "entry.1302424820": documento, "entry.1801154005": edad, "entry.1172011247": eps, "entry.162368130": rh, "entry.1892763134": e_nombre, "entry.2011749615": e_tel}
+            requests.post("https://docs.google.com/forms/d/e/1FAIpQLSfH5wFiZ57m530cMju3wOnI1m1AynsK3uAINDTvnvMYkiFLZg/formResponse", data=payload)
+            st.success("✅ Registro exitoso"); st.cache_data.clear()
 
-# --- 6. VISTA CONSULTA Y EVOLUCIONES ---
+# --- 6. VISTA CONSULTA ---
 elif st.session_state.menu == "Consulta":
-    st.title("🔍 Consulta de Paciente")
-    id_buscado = st.text_input("Documento", value=st.query_params.get("id", "")).strip()
+    st.title("🔍 Consulta y Seguimiento")
+    id_buscado = st.text_input("Documento a consultar", value=st.query_params.get("id", "")).strip()
 
     if id_buscado and df_p is not None:
         paciente = df_p[df_p['ID_KEY'] == id_buscado]
@@ -115,11 +128,11 @@ elif st.session_state.menu == "Consulta":
             nom_e = next((p[c] for c in p.index if "NOMBRE" in c and "EMERGENCIA" in c), "No registra")
             tel_e = next((p[c] for c in p.index if "TEL" in c and "EMERGENCIA" in c), "No registra")
             
-            # QR y Carnet
+            # Generación de QR y Carnet
             url_p = f"https://tarjeta-vida-qr-abrilycompania.streamlit.app/?id={id_buscado}"
-            qr = segno.make(url_p)
-            buf = io.BytesIO(); qr.save(buf, kind='png', scale=10)
-            qr_b64 = base64.b64encode(buf.getvalue()).decode()
+            qr_segno = segno.make(url_p)
+            buff_qr = io.BytesIO(); qr_segno.save(buff_qr, kind='png', scale=10)
+            qr_b64 = base64.b64encode(buff_qr.getvalue()).decode()
 
             st.markdown(f"""
             <div class="carnet-container">
@@ -135,41 +148,44 @@ elif st.session_state.menu == "Consulta":
                 </div>
             </div>""", unsafe_allow_html=True)
 
+            # --- BOTONES DE DESCARGA PDF ---
+            col_pdf1, col_pdf2 = st.columns(2)
+            
             # PDF Carnet
             pdf_c = FPDF(orientation='L', unit='mm', format=(85, 55))
             pdf_c.add_page(); pdf_c.set_fill_color(162, 210, 255); pdf_c.rect(0, 0, 85, 55, 'F')
-            qr_path = f"qr_{id_buscado}.png"
-            qr.save(qr_path, border=0)
-            pdf_c.image(qr_path, 57, 14, 22, 22)
-            pdf_c.set_font("Arial", 'B', 8); pdf_c.set_xy(4, 20); pdf_c.cell(0, 4, f"PACIENTE: {p.get('NOMBRE')[:25]}")
-            st.download_button("📥 Descargar Carnet", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
-            if os.path.exists(qr_path): os.remove(qr_path)
+            qr_tmp = f"tmp_{id_buscado}.png"
+            qr_segno.save(qr_tmp, border=0)
+            pdf_c.image(qr_tmp, 58, 14, 22, 22)
+            pdf_c.set_font("Arial", 'B', 8); pdf_c.set_xy(5, 20); pdf_c.cell(0, 4, f"PACIENTE: {p.get('NOMBRE')[:25]}")
+            with col_pdf1: st.download_button("🪪 Descargar Carnet", pdf_c.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
+            if os.path.exists(qr_tmp): os.remove(qr_tmp)
 
-            # --- REGISTRO DE NUEVA EVOLUCIÓN ---
+            # --- REGISTRO DE EVOLUCIÓN ---
             st.divider()
             with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
                 with st.form("f_evo"):
                     c1, c2 = st.columns(2)
-                    with c1: v_mot = st.text_area("Motivo"); v_val = st.text_area("Valoración"); v_tal = st.text_input("Talla")
-                    with c2: v_pes = st.text_input("Peso"); v_pre = st.text_input("Presión Arterial"); v_epi = st.text_area("Epicrisis")
+                    with c1: mot = st.text_area("Motivo"); val = st.text_area("Valoración"); tal = st.text_input("Talla")
+                    with c2: pes = st.text_input("Peso"); pre = st.text_input("Presión Arterial"); epi = st.text_area("Epicrisis")
                     if st.form_submit_button("GUARDAR EVOLUCIÓN"):
-                        d_evo = {"entry.2019369477": id_buscado, "entry.611862537": v_mot, "entry.1088523869": v_val, "entry.1275746503": v_tal, "entry.949747647": v_pes, "entry.2091389798": v_pre, "entry.616774918": v_epi}
+                        d_evo = {"entry.2019369477": id_buscado, "entry.611862537": mot, "entry.1088523869": val, "entry.1275746503": tal, "entry.949747647": pes, "entry.2091389798": pre, "entry.616774918": epi}
                         requests.post("https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse", data=d_evo)
-                        st.success("Guardado."); st.cache_data.clear(); st.rerun()
+                        st.success("Evolución guardada"); st.cache_data.clear(); st.rerun()
 
-            # --- HISTORIAL Y PDF ---
+            # --- HISTORIAL COMPLETO ---
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             if not h_p.empty:
-                st.subheader("📋 Historial Médico")
+                st.subheader("📋 Historial de Evoluciones")
                 
-                # Botón PDF Historial
-                pdf_h_doc = FPDF(); pdf_h_doc.add_page(); pdf_h_doc.set_font("Arial", 'B', 14)
-                pdf_h_doc.cell(0, 10, f"HISTORIAL: {p.get('NOMBRE')}", 0, 1, 'C')
+                # Descarga PDF Historial
+                pdf_h = FPDF(); pdf_h.add_page(); pdf_h.set_font("Arial", 'B', 14)
+                pdf_h.cell(0, 10, f"HISTORIAL MÉDICO: {p.get('NOMBRE')}", 0, 1, 'C')
                 for _, f in h_p.iterrows():
-                    pdf_h_doc.set_font("Arial", 'B', 10); pdf_h_doc.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L')
-                    pdf_h_doc.set_font("Arial", '', 9); pdf_h_doc.multi_cell(0, 6, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nEPICRISIS: {f.get('10. EPICRISIS')}", 1)
-                    pdf_h_doc.ln(2)
-                st.download_button("📄 Descargar Historial (PDF)", pdf_h_doc.output(dest='S').encode('latin-1'), f"Historial_{id_buscado}.pdf")
+                    pdf_h.set_font("Arial", 'B', 10); pdf_h.cell(0, 8, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, 'L', True)
+                    pdf_h.set_font("Arial", '', 9); pdf_h.multi_cell(0, 6, f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\nEPICRISIS: {f.get('10. EPICRISIS')}", 1)
+                    pdf_h.ln(2)
+                with col_pdf2: st.download_button("📄 Descargar Historial", pdf_h.output(dest='S').encode('latin-1'), f"Historial_{id_buscado}.pdf")
 
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
@@ -177,9 +193,10 @@ elif st.session_state.menu == "Consulta":
                         <small>📅 {f.get('MARCA TEMPORAL')}</small>
                         <p><b>MOTIVO:</b> {f.get('3. MOTIVO DE LA CONSULTA')}</p>
                         <div class="grid-datos">
-                            <span>📏 {f.get('4. TALLA')} cm</span>
-                            <span>⚖️ {f.get('5. PESO')} kg</span>
-                            <span>🩸 {f.get('6. PRESIÓN ARTERIAL')}</span>
+                            <span><b>📏 Talla:</b> {f.get('4. TALLA')} cm</span>
+                            <span><b>⚖️ Peso:</b> {f.get('5. PESO')} kg</span>
+                            <span><b>🩸 TA:</b> {f.get('6. PRESIÓN ARTERIAL')}</span>
                         </div>
-                        <p><b>EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
+                        <p><b>📝 EPICRISIS:</b><br>{f.get('10. EPICRISIS')}</p>
                     </div>""", unsafe_allow_html=True)
+            
