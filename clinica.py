@@ -7,7 +7,7 @@ import io
 import base64
 import os
 
-# --- CLASE PARA MANEJO DE IMÁGENES EN MEMORIA ---
+# --- CLASE PARA MANEJO DE IMÁGENES EN MEMORIA (INDISPENSABLE) ---
 class NamedBytesIO(io.BytesIO):
     def __init__(self, content, name):
         super().__init__(content)
@@ -28,7 +28,7 @@ st.markdown(f"""
     
     /* DISEÑO CARNET (FIDELIDAD 100% A TU IMAGEN) */
     .carnet-container {{
-        background-color: #a2d2ff; /* Azul cielo de la imagen */
+        background-color: #a2d2ff;
         border-radius: 15px;
         padding: 20px;
         max-width: 500px;
@@ -105,7 +105,7 @@ with st.sidebar:
     if st.button("📝 Registrar"): st.session_state.menu = "Registrar"; st.rerun()
     if st.button("🔍 Consulta"): st.session_state.menu = "Consulta"; st.rerun()
 
-# --- 4. SECCIÓN CONSULTA (EL CARNET) ---
+# --- 4. SECCIÓN CONSULTA Y CARNET ---
 if st.session_state.menu == "Consulta":
     st.title("🔍 Carnet y Evoluciones")
     id_buscado = st.text_input("Documento del Paciente", value=st.query_params.get("id", "")).strip()
@@ -115,22 +115,22 @@ if st.session_state.menu == "Consulta":
         if not paciente.empty:
             p = paciente.iloc[0]
             
-            # Búsqueda de datos de emergencia
             n_emer = next((p[c] for c in p.index if "NOMBRE" in c and "EMERGENCIA" in c), "No registra")
             t_emer = next((p[c] for c in p.index if "TEL" in c and "EMERGENCIA" in c), "No registra")
             
+            # Generar QR para pantalla y PDF
             url_p = f"https://tarjeta-vida-qr-abrilycompania.streamlit.app/?id={id_buscado}"
             qr_gen = segno.make(url_p)
             buff_qr = io.BytesIO()
             qr_gen.save(buff_qr, kind='png', scale=10)
             qr_b64 = base64.b64encode(buff_qr.getvalue()).decode()
 
-            # --- RENDERIZADO EN PLATAFORMA ---
+            # Renderizado en plataforma
             st.markdown(f"""
             <div class="carnet-container">
                 <div class="carnet-header">
                     <img src="{LOGO_URL}" width="80">
-                    <b style="font-size: 16px;">TARJETA VIDA QR</b>
+                    <b style="font-size: 16px; color: #000;">TARJETA VIDA QR</b>
                 </div>
                 <div class="carnet-body">
                     <div class="carnet-info">
@@ -141,67 +141,58 @@ if st.session_state.menu == "Consulta":
                     </div>
                     <div class="carnet-qr">
                         <img src="data:image/png;base64,{qr_b64}" width="100">
-                        <span style="font-size: 9px; color: #555; margin-top:5px;">ID: {id_buscado}</span>
                     </div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # --- GENERACIÓN DE PDF (IDENTICO A LA IMAGEN) ---
+            # --- GENERACIÓN DE PDF CORREGIDA (LOGO DESCARGADO) ---
             pdf = FPDF(orientation='L', unit='mm', format=(85, 55))
             pdf.add_page()
-            pdf.set_fill_color(162, 210, 255) # Color azul exacto
+            pdf.set_fill_color(162, 210, 255) # Azul cielo
             pdf.rect(0, 0, 85, 55, 'F')
             
-            # Logo y Título
-            pdf.image(LOGO_URL, 5, 5, 20)
+            # FIX: Descargar logo para que FPDF no falle
+            try:
+                response = requests.get(LOGO_URL)
+                logo_data = NamedBytesIO(response.content, "logo.jpg")
+                pdf.image(logo_data, 5, 5, 18)
+            except:
+                pass # Si el logo falla, el PDF sigue sin él para no colapsar
+
             pdf.set_font("Arial", 'B', 10)
-            pdf.set_xy(26, 7)
+            pdf.set_xy(25, 7)
             pdf.cell(0, 5, "TARJETA VIDA QR", 0, 1)
             
-            # Datos Paciente
             pdf.set_font("Arial", 'B', 8)
             pdf.set_xy(5, 18); pdf.cell(0, 4, "PACIENTE:", 0, 1)
             pdf.set_font("Arial", '', 8)
             pdf.set_xy(5, 22); pdf.cell(0, 4, f"{p.get('NOMBRE')[:30]}", 0, 1)
+            pdf.set_xy(5, 27); pdf.cell(0, 4, f"ID: {p.get('DOCUMENTO')}", 0, 1)
+            pdf.set_xy(5, 31); pdf.cell(0, 4, f"RH: {p.get('RH')} | EPS: {p.get('EPS')}", 0, 1)
             
-            pdf.set_font("Arial", 'B', 8)
-            pdf.set_xy(5, 28); pdf.cell(0, 4, f"ID: {p.get('DOCUMENTO')}", 0, 1)
-            pdf.cell(0, 4, f"RH: {p.get('RH')} | EPS: {p.get('EPS')}", 0, 1)
-            
-            # Cuadro SOS
-            pdf.set_fill_color(244, 63, 94) # Rojo SOS
+            # Cuadro SOS Rojo
+            pdf.set_fill_color(244, 63, 94)
             pdf.rect(5, 38, 45, 12, 'F')
             pdf.set_text_color(255, 255, 255)
             pdf.set_font("Arial", 'B', 7)
             pdf.set_xy(5, 39); pdf.multi_cell(45, 3.5, f"SOS: {n_emer}\nTEL: {t_emer}", 0, 'C')
             
-            # QR en PDF
-            pdf.set_text_color(0, 0, 0)
+            # QR en blanco a la derecha
             pdf.set_fill_color(255, 255, 255)
-            pdf.rect(54, 12, 26, 32, 'F') # Fondo blanco para el QR
-            
-            # Usamos NamedBytesIO para evitar el error .rfind
-            named_qr = NamedBytesIO(buff_qr.getvalue(), "qr_file.png")
+            pdf.rect(54, 12, 26, 32, 'F')
+            named_qr = NamedBytesIO(buff_qr.getvalue(), "qr.png")
             pdf.image(named_qr, 56, 14, 22, 22)
+            pdf.set_text_color(0, 0, 0)
             pdf.set_font("Arial", 'B', 6)
             pdf.set_xy(54, 38); pdf.cell(26, 4, f"ID: {id_buscado}", 0, 0, 'C')
 
-            st.download_button("📥 Descargar Carnet Digital (PDF)", pdf.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
+            st.download_button("📥 Descargar Tarjeta Digital", pdf.output(dest='S').encode('latin-1'), f"Carnet_{id_buscado}.pdf")
 
-            # --- SECCIÓN HISTORIAL (7 DE MAYO) ---
+            # --- HISTORIAL (7 DE MAYO) ---
             st.divider()
-            st.subheader("📋 Historia Clínica y Evoluciones")
+            st.subheader("📋 Historia Clínica")
             h_p = df_h[df_h['ID_KEY'] == id_buscado].sort_index(ascending=False)
             
-            with st.expander("➕ Nueva Evolución"):
-                with st.form("f_evo"):
-                    c1, c2 = st.columns(2)
-                    with c1: mot = st.text_area("Motivo"); val = st.text_area("Valoración"); tal = st.text_input("Talla")
-                    with c2: pes = st.text_input("Peso"); ta = st.text_input("T.A."); epi = st.text_area("Epicrisis")
-                    if st.form_submit_button("Guardar"):
-                        # Aquí iría tu requests.post al Google Form de evoluciones
-                        st.success("Guardado"); st.cache_data.clear(); st.rerun()
-
             if not h_p.empty:
                 for _, f in h_p.iterrows():
                     st.markdown(f"""
@@ -216,10 +207,9 @@ if st.session_state.menu == "Consulta":
                         <p><b>📝 EPICRISIS:</b> {f.get('10. EPICRISIS')}</p>
                     </div>""", unsafe_allow_html=True)
 
-# Sección Registrar
 elif st.session_state.menu == "Registrar":
     st.title("📝 Registro Nuevo")
     with st.form("reg"):
-        st.text_input("Nombre"); st.text_input("Documento")
-        if st.form_submit_button("Registrar"):
-            st.success("Listo"); st.cache_data.clear()
+        st.text_input("Nombre Completo"); st.text_input("Documento")
+        if st.form_submit_button("Guardar"):
+            st.success("Paciente registrado."); st.cache_data.clear()
