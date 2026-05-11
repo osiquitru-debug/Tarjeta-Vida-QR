@@ -22,7 +22,6 @@ APP_BASE_URL = "https://tarjeta-vida-qr-abrilycompania.streamlit.app/"
 
 # ─────────────────────────────────────────────
 # 2. USUARIOS AUTORIZADOS
-#    Para agregar más: "usuario": _hash("contraseña")
 # ─────────────────────────────────────────────
 def _hash(pwd: str) -> str:
     return hashlib.sha256(pwd.encode()).hexdigest()
@@ -386,7 +385,6 @@ if st.session_state.menu == "Inicio":
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Login embebido en la página de inicio ──
     if st.session_state.autenticado:
         st.success(f"✅ Sesión activa como **{st.session_state.usuario_activo}**. "
                    "Ahora puedes acceder a **Registrar** desde el menú.")
@@ -530,73 +528,83 @@ elif st.session_state.menu == "Consulta":
 
             h_p = df_h[df_h["ID_KEY"] == id_buscado].sort_index(ascending=False)
 
-            # Descargas — solo si está autenticado
-            if st.session_state.autenticado:
-                col_pdf, col_carnet = st.columns(2)
-                with col_pdf:
-                    qp = qr_path(id_buscado)
-                    hpdf = FPDF()
-                    hpdf.add_page()
-                    try:
-                        lp = logo_path_tmp()
-                        hpdf.image(lp, 10, 8, 30); os.unlink(lp)
-                    except: pass
-                    try:
-                        hpdf.image(qp, x=165, y=8, w=35, h=35)
-                        hpdf.set_xy(155, 44)
-                        hpdf.set_font("Arial", "I", 7)
-                        hpdf.cell(50, 4, "Escanea para ver historial", align="C")
-                    except: pass
-                    hpdf.set_xy(40, 10)
-                    hpdf.set_font("Arial", "B", 14)
-                    hpdf.cell(120, 10, "Historia Clinica - Tarjeta Vida QR", ln=False, align="C")
-                    hpdf.ln(22)
-                    hpdf.set_font("Arial", "I", 8); hpdf.set_text_color(80, 80, 80)
-                    hpdf.cell(0, 5, f"Enlace: {APP_BASE_URL}?doc={id_buscado}", ln=True, align="C")
-                    hpdf.set_text_color(0, 0, 0); hpdf.ln(3)
-                    hpdf.set_fill_color(230, 230, 230)
-                    hpdf.set_font("Arial", "B", 10)
-                    hpdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, "L", 1)
-                    hpdf.set_font("Arial", "", 9)
-                    hpdf.multi_cell(0, 5,
-                        f"Nombre: {p.get('NOMBRE')}\n"
-                        f"Documento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\n"
-                        f"EPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\n"
-                        f"Alertas: {alertas}\n"
-                        f"CONTACTO EMERGENCIA: {nom_emer} - Tel: {tel_emer}")
-                    hpdf.ln(5)
-                    if not h_p.empty:
-                        hpdf.set_fill_color(183, 228, 199)
-                        hpdf.set_font("Arial", "B", 10)
-                        hpdf.cell(0, 7, "HISTORIAL DE EVOLUCIONES", 1, 1, "L", 1)
-                        for _, f in h_p.iterrows():
-                            hpdf.set_fill_color(245, 245, 245)
-                            hpdf.set_font("Arial", "B", 9)
-                            hpdf.cell(0, 6, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, "L", 1)
-                            hpdf.set_font("Arial", "", 8)
-                            hpdf.multi_cell(0, 4,
-                                f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\n"
-                                f"VALORACION: {f.get('2. VALORACIÓN')}\n"
-                                f"MEDIDAS: Talla:{f.get('4. TALLA')} | Peso:{f.get('5. PESO')} | TA:{f.get('6. PRESIÓN ARTERIAL')}\n"
-                                f"ANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\n"
-                                f"MEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\n"
-                                f"LABORATORIOS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\n"
-                                f"EPICRISIS: {f.get('10. EPICRISIS')}")
-                            hpdf.ln(2)
-                    try: os.unlink(qp)
-                    except: pass
-                    st.download_button("📥 Historia Clínica PDF",
-                        hpdf.output(dest="S").encode("latin-1"),
-                        f"HC_{id_buscado}.pdf")
+            # ── HISTORIA CLÍNICA PDF — visible para TODOS ──────────────────
+            st.subheader("📥 Descargas")
+            col_pdf, col_carnet = st.columns(2)
 
-                with col_carnet:
+            with col_pdf:
+                qp = qr_path(id_buscado)
+                hpdf = FPDF()
+                hpdf.add_page()
+                try:
+                    lp = logo_path_tmp()
+                    hpdf.image(lp, 10, 8, 30); os.unlink(lp)
+                except: pass
+                try:
+                    hpdf.image(qp, x=165, y=8, w=35, h=35)
+                    hpdf.set_xy(155, 44)
+                    hpdf.set_font("Arial", "I", 7)
+                    hpdf.cell(50, 4, "Escanea para ver historial", align="C")
+                except: pass
+                hpdf.set_xy(40, 10)
+                hpdf.set_font("Arial", "B", 14)
+                hpdf.cell(120, 10, "Historia Clinica - Tarjeta Vida QR", ln=False, align="C")
+                hpdf.ln(22)
+                hpdf.set_font("Arial", "I", 8); hpdf.set_text_color(80, 80, 80)
+                hpdf.cell(0, 5, f"Enlace: {APP_BASE_URL}?doc={id_buscado}", ln=True, align="C")
+                hpdf.set_text_color(0, 0, 0); hpdf.ln(3)
+                hpdf.set_fill_color(230, 230, 230)
+                hpdf.set_font("Arial", "B", 10)
+                hpdf.cell(0, 7, "DATOS DEL PACIENTE", 1, 1, "L", 1)
+                hpdf.set_font("Arial", "", 9)
+                hpdf.multi_cell(0, 5,
+                    f"Nombre: {p.get('NOMBRE')}\n"
+                    f"Documento: {p.get('DOCUMENTO')} | Edad: {p.get('EDAD')} | RH: {p.get('RH')}\n"
+                    f"EPS: {p.get('EPS')} | Celular: {p.get('CELULAR')}\n"
+                    f"Alertas: {alertas}\n"
+                    f"CONTACTO EMERGENCIA: {nom_emer} - Tel: {tel_emer}")
+                hpdf.ln(5)
+                if not h_p.empty:
+                    hpdf.set_fill_color(183, 228, 199)
+                    hpdf.set_font("Arial", "B", 10)
+                    hpdf.cell(0, 7, "HISTORIAL DE EVOLUCIONES", 1, 1, "L", 1)
+                    for _, f in h_p.iterrows():
+                        hpdf.set_fill_color(245, 245, 245)
+                        hpdf.set_font("Arial", "B", 9)
+                        hpdf.cell(0, 6, f"FECHA: {f.get('MARCA TEMPORAL')}", 1, 1, "L", 1)
+                        hpdf.set_font("Arial", "", 8)
+                        hpdf.multi_cell(0, 4,
+                            f"MOTIVO: {f.get('3. MOTIVO DE LA CONSULTA')}\n"
+                            f"VALORACION: {f.get('2. VALORACIÓN')}\n"
+                            f"MEDIDAS: Talla:{f.get('4. TALLA')} | Peso:{f.get('5. PESO')} | TA:{f.get('6. PRESIÓN ARTERIAL')}\n"
+                            f"ANTECEDENTES: {f.get('7. ANTECEDENTES MEDICOS')}\n"
+                            f"MEDICAMENTOS: {f.get('8. MEDICAMENTOS')}\n"
+                            f"LABORATORIOS: {f.get('9. LABORATORIOS - PROCEDIMIENTOS')}\n"
+                            f"EPICRISIS: {f.get('10. EPICRISIS')}")
+                        hpdf.ln(2)
+                try: os.unlink(qp)
+                except: pass
+                st.download_button("📥 Historia Clínica PDF",
+                    hpdf.output(dest="S").encode("latin-1"),
+                    f"HC_{id_buscado}.pdf")
+
+            # ── CARNET — solo usuarios autenticados ────────────────────────
+            with col_carnet:
+                if st.session_state.autenticado:
                     carnet_bytes = generar_carnet(p, alertas, nom_emer, tel_emer)
                     st.download_button("🪪 Carnet VidaQR (imprimible)",
                         carnet_bytes,
                         f"Carnet_VidaQR_{id_buscado}.pdf",
                         mime="application/pdf")
-
-                st.info("💡 Imprime a tamaño **85.6 × 54 mm** (tarjeta de crédito).", icon="🖨️")
+                    st.info("💡 Imprime a tamaño **85.6 × 54 mm** (tarjeta de crédito).", icon="🖨️")
+                else:
+                    st.markdown("""
+                    <div style='background:#fff3cd;padding:14px;border-radius:10px;
+                    border:1px solid #ffc107;margin-top:4px;'>
+                        🔒 <b>Carnet VidaQR</b><br>
+                        <small>Inicia sesión para descargar el carnet imprimible.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             # QR en pantalla — siempre visible
             st.markdown("---")
