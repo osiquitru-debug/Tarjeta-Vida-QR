@@ -22,37 +22,34 @@ APP_BASE_URL = "https://tarjeta-vida-qr-abrilycompania.streamlit.app/"
 
 # ─────────────────────────────────────────────
 # 2. USUARIOS AUTORIZADOS
-#    Para agregar más usuarios, añade entradas al diccionario:
-#    "nombre_usuario": hashlib.sha256("contraseña".encode()).hexdigest()
+#    Para agregar más: "usuario": _hash("contraseña")
 # ─────────────────────────────────────────────
 def _hash(pwd: str) -> str:
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 USUARIOS = {
-    "admin":  _hash("VidaQR2026"),
-    "abril":  _hash("abril123"),
+    "admin": _hash("VidaQR2026"),
+    "abril": _hash("abril123"),
 }
 
 # ─────────────────────────────────────────────
 # 3. ESTADO DE SESIÓN INICIAL
 # ─────────────────────────────────────────────
-if "menu" not in st.session_state:
-    st.session_state.menu = "Inicio"
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-if "usuario_activo" not in st.session_state:
-    st.session_state.usuario_activo = ""
+for key, val in {
+    "menu": "Inicio",
+    "autenticado": False,
+    "usuario_activo": "",
+    "acceso_qr": False,
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
 # Detectar apertura por QR (?doc=...)
 query_params = st.query_params
 if "doc" in query_params and st.session_state.menu != "Consulta":
     st.session_state.menu = "Consulta"
     st.session_state.doc_precargado = query_params["doc"]
-    # QR → no requiere login, acceso directo al historial
     st.session_state.acceso_qr = True
-else:
-    if "acceso_qr" not in st.session_state:
-        st.session_state.acceso_qr = False
 
 bg_color = "#D8F3DC" if st.session_state.menu in ["Registrar", "Consulta"] else "#f0f7f4"
 
@@ -76,8 +73,8 @@ div.stButton>button{{background-color:#98FF98!important;color:#000!important;
   border:1px solid #e2e8f0;border-left:8px solid #b7e4c7;margin-bottom:12px;}}
 .grid-medidas{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
   margin:10px 0;padding:5px 0;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;}}
-.login-box{{background:#fff;padding:30px;border-radius:16px;
-  border:2px solid #a2d2ff;box-shadow:0 6px 20px rgba(0,0,0,.08);max-width:380px;margin:40px auto;}}
+.login-box{{background:#fff;padding:28px 24px;border-radius:16px;
+  border:2px solid #a2d2ff;box-shadow:0 6px 20px rgba(0,0,0,.08);margin-top:20px;}}
 .badge-qr{{background:#d8f3dc;border:1px solid #74c69d;border-radius:8px;
   padding:8px 14px;font-size:.85em;margin-bottom:12px;display:inline-block;}}
 .footer{{position:fixed;left:0;bottom:0;width:100%;
@@ -170,13 +167,12 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     p_wave.lineTo(W, 0); p_wave.lineTo(0, 0); p_wave.close()
     c.drawPath(p_wave, fill=1, stroke=0)
 
-    icon_data = [
+    for icon, texto, ix in [
         ("🩺", "INFORMACIÓN\nMÉDICA",      W*0.08),
         ("💊", "MEDICAMENTOS",              W*0.30),
         ("⚠️", "ALERGIAS",                 W*0.52),
         ("📞", "CONTACTOS DE\nEMERGENCIA", W*0.72),
-    ]
-    for icon, texto, ix in icon_data:
+    ]:
         c.setFillColor(colors.white)
         c.setFont("Helvetica", 5.5)
         c.drawCentredString(ix, 9.5*mm, icon)
@@ -201,15 +197,14 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.setFont("Helvetica-Bold", 9)
     c.drawString(30*mm, H-10*mm, "✚")
 
-    deco_front = [
+    for col, dx, dy, r in [
         (colors.HexColor("#f9a825"), W-5*mm, H-4*mm,  1.2*mm),
         (colors.HexColor("#e91e8c"), W-8*mm, H-8*mm,  0.9*mm),
         (colors.HexColor("#7c4dff"), W-3*mm, H-12*mm, 0.9*mm),
         (colors.HexColor("#00bcd4"), 2*mm,   H-4*mm,  0.8*mm),
         (colors.HexColor("#f9a825"), 5*mm,   H-7*mm,  0.7*mm),
         (colors.HexColor("#e91e8c"), W-4*mm, H-20*mm, 0.7*mm),
-    ]
-    for col, dx, dy, r in deco_front:
+    ]:
         c.setFillColor(col); c.circle(dx, dy, r, fill=1, stroke=0)
 
     c.setFillColor(colors.HexColor("#7c4dff"))
@@ -240,7 +235,6 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.setFont("Helvetica-Bold", 3.5)
     c.drawCentredString(ebox_x+ebox_w/2, ebox_y+4.5*mm, "ESTA TARJETA PUEDE")
     c.drawCentredString(ebox_x+ebox_w/2, ebox_y+1.8*mm, "SALVAR TU VIDA")
-
     c.showPage()
 
     # ── PÁGINA 2: CARA POSTERIOR ──────────────
@@ -286,13 +280,12 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.drawString(1.8*mm, H-44*mm, "Esta tarjeta es personal")
     c.drawString(1.8*mm, H-46.5*mm, "e intransferible.")
 
-    deco_back = [
+    for col, dx, dy, r in [
         (colors.HexColor("#f9a825"), W-4*mm, H-4*mm,  1.0*mm),
         (colors.HexColor("#7c4dff"), W-3*mm, H-10*mm, 0.8*mm),
         (colors.HexColor("#e91e8c"), W-7*mm, H-4*mm,  0.7*mm),
         (colors.HexColor("#00bcd4"), W-6*mm, H-15*mm, 0.7*mm),
-    ]
-    for col, dx, dy, r in deco_back:
+    ]:
         c.setFillColor(col); c.circle(dx, dy, r, fill=1, stroke=0)
     c.setFillColor(colors.HexColor("#7c4dff"))
     c.setFont("Helvetica-Bold", 6)
@@ -305,21 +298,19 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
     c.setFont("Helvetica-Bold", 4.5)
     c.drawCentredString(tab_x+tab_w/2, tab_y-head_h+2*mm, "INFORMACIÓN DEL TITULAR")
 
-    filas = [
+    for i, (icon, label, valor) in enumerate([
         ("👤", "NOMBRE:",              nombre[:28]),
         ("🪪", "DOCUMENTO:",           doc_raw),
         ("🩸", "TIPO DE SANGRE:",      rh),
         ("⚠️", "ALERGIAS:",            (alertas[:28]+"…") if len(alertas)>28 else alertas),
         ("💊", "EPS:",                 eps[:24]),
         ("📞", "CONTACTO EMERGENCIA:", f"{nom_emer[:16]} {tel_emer[:12]}"),
-    ]
-    row_h_val = 7.2*mm
-    for i, (icon, label, valor) in enumerate(filas):
-        ry = tab_y - head_h - (i+1)*row_h_val
+    ]):
+        ry = tab_y - head_h - (i+1)*7.2*mm
         c.setFillColor(colors.HexColor("#f0fdfa") if i%2==0 else colors.white)
-        c.rect(tab_x, ry, tab_w, row_h_val, fill=1, stroke=0)
+        c.rect(tab_x, ry, tab_w, 7.2*mm, fill=1, stroke=0)
         c.setStrokeColor(colors.HexColor("#b2dfdb")); c.setLineWidth(0.3)
-        c.line(tab_x, ry+row_h_val, tab_x+tab_w, ry+row_h_val)
+        c.line(tab_x, ry+7.2*mm, tab_x+tab_w, ry+7.2*mm)
         c.setFont("Helvetica", 4.2); c.setFillColor(colors.HexColor("#00897b"))
         c.drawString(tab_x+1*mm, ry+2.5*mm, icon)
         c.setFont("Helvetica-Bold", 3.5); c.setFillColor(colors.HexColor("#1B2E5E"))
@@ -337,31 +328,7 @@ def generar_carnet(p, alertas, nom_emer, tel_emer):
 
 
 # ─────────────────────────────────────────────
-# 7. COMPONENTE DE LOGIN
-# ─────────────────────────────────────────────
-def mostrar_login(titulo="🔐 Acceso Requerido", mensaje="Esta sección es solo para personal autorizado."):
-    st.markdown(f"""
-    <div class="login-box">
-        <h3 style='text-align:center;margin-bottom:4px;'>{titulo}</h3>
-        <p style='text-align:center;color:#555;font-size:.9em;'>{mensaje}</p>
-    </div>""", unsafe_allow_html=True)
-
-    with st.form("form_login"):
-        usuario = st.text_input("👤 Usuario")
-        clave   = st.text_input("🔑 Contraseña", type="password")
-        entrar  = st.form_submit_button("INGRESAR")
-
-        if entrar:
-            if usuario in USUARIOS and USUARIOS[usuario] == _hash(clave):
-                st.session_state.autenticado    = True
-                st.session_state.usuario_activo = usuario
-                st.rerun()
-            else:
-                st.error("❌ Usuario o contraseña incorrectos.")
-
-
-# ─────────────────────────────────────────────
-# 8. NAVEGACIÓN (SIDEBAR)
+# 7. NAVEGACIÓN (SIDEBAR)
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.image(LOGO_URL, use_container_width=True)
@@ -386,14 +353,10 @@ with st.sidebar:
         st.query_params.clear(); st.rerun()
 
     if st.button("📝 Registrar", use_container_width=True):
-        if st.session_state.autenticado:
-            st.session_state.menu      = "Registrar"
-            st.session_state.acceso_qr = False
-            st.session_state.pop("doc_precargado", None)
-            st.query_params.clear(); st.rerun()
-        else:
-            st.session_state.menu = "Login_Registro"
-            st.rerun()
+        st.session_state.menu      = "Registrar"
+        st.session_state.acceso_qr = False
+        st.session_state.pop("doc_precargado", None)
+        st.query_params.clear(); st.rerun()
 
     if st.button("🔍 Consulta", use_container_width=True):
         st.session_state.menu      = "Consulta"
@@ -401,53 +364,79 @@ with st.sidebar:
         st.session_state.pop("doc_precargado", None)
         st.query_params.clear(); st.rerun()
 
-    if not st.session_state.autenticado:
-        if st.button("🔐 Iniciar sesión", use_container_width=True):
-            st.session_state.menu = "Login_General"
-            st.rerun()
-
 
 # ─────────────────────────────────────────────
-# 9. VISTAS
+# 8. VISTAS
 # ─────────────────────────────────────────────
 st.image(LOGO_URL, width=220)
 
-# ── INICIO ────────────────────────────────────
+# ══════════════════════════════════════════════
+# INICIO — bienvenida + login integrado
+# ══════════════════════════════════════════════
 if st.session_state.menu == "Inicio":
     st.title("🩺 Tarjeta Vida QR")
     st.markdown("### *Tu Información de Salud Siempre Contigo*")
+
     st.markdown("""
-    <br>
-    <div style='background:#fff;padding:18px;border-radius:12px;border:1px solid #a2d2ff;'>
+    <div style='background:#fff;padding:18px;border-radius:12px;border:1px solid #a2d2ff;margin-bottom:20px;'>
         <b>📌 ¿Cómo funciona?</b><br><br>
-        🔍 <b>Escanear QR</b> → Abre el historial del paciente directamente, sin necesidad de login.<br><br>
-        📝 <b>Registrar paciente</b> → Requiere usuario y contraseña (solo personal autorizado).<br><br>
-        🩺 <b>Consulta clínica</b> → Busca cualquier paciente por documento.
+        🔍 <b>Escanear QR</b> → Abre historial e historial del paciente sin login.<br><br>
+        📝 <b>Registrar paciente</b> → Requiere usuario y contraseña.<br><br>
+        🩺 <b>Consulta + Evoluciones</b> → Disponible para todos.
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Login embebido en la página de inicio ──
+    if st.session_state.autenticado:
+        st.success(f"✅ Sesión activa como **{st.session_state.usuario_activo}**. "
+                   "Ahora puedes acceder a **Registrar** desde el menú.")
+    else:
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        st.markdown("#### 🔐 Iniciar sesión — Personal autorizado")
+        st.markdown("Inicia sesión para habilitar el registro de pacientes.")
+
+        with st.form("form_login_inicio"):
+            usuario = st.text_input("👤 Usuario")
+            clave   = st.text_input("🔑 Contraseña", type="password")
+            entrar  = st.form_submit_button("INGRESAR", use_container_width=True)
+
+            if entrar:
+                if usuario in USUARIOS and USUARIOS[usuario] == _hash(clave):
+                    st.session_state.autenticado    = True
+                    st.session_state.usuario_activo = usuario
+                    st.rerun()
+                else:
+                    st.error("❌ Usuario o contraseña incorrectos.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="footer">© 2026 Abril_Garcia_Sierra</div>', unsafe_allow_html=True)
 
-# ── LOGIN GENERAL ─────────────────────────────
-elif st.session_state.menu == "Login_General":
-    mostrar_login()
-
-# ── LOGIN PREVIO AL REGISTRO ──────────────────
-elif st.session_state.menu == "Login_Registro":
-    mostrar_login(
-        titulo="🔐 Acceso a Registro",
-        mensaje="Solo el personal autorizado puede registrar pacientes."
-    )
-    if st.session_state.autenticado:
-        st.session_state.menu = "Registrar"
-        st.rerun()
-
-# ── REGISTRAR (protegido) ─────────────────────
+# ══════════════════════════════════════════════
+# REGISTRAR — protegido por login
+# ══════════════════════════════════════════════
 elif st.session_state.menu == "Registrar":
     if not st.session_state.autenticado:
-        mostrar_login(
-            titulo="🔐 Acceso a Registro",
-            mensaje="Solo el personal autorizado puede registrar pacientes."
-        )
+        st.title("📝 REGISTRO DE PACIENTE")
+        st.warning("🔒 Debes iniciar sesión para registrar pacientes.")
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        st.markdown("#### 🔐 Iniciar sesión")
+
+        with st.form("form_login_reg"):
+            usuario = st.text_input("👤 Usuario")
+            clave   = st.text_input("🔑 Contraseña", type="password")
+            entrar  = st.form_submit_button("INGRESAR", use_container_width=True)
+
+            if entrar:
+                if usuario in USUARIOS and USUARIOS[usuario] == _hash(clave):
+                    st.session_state.autenticado    = True
+                    st.session_state.usuario_activo = usuario
+                    st.rerun()
+                else:
+                    st.error("❌ Usuario o contraseña incorrectos.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
     else:
         st.title("📝 REGISTRO DE PACIENTE")
         st.markdown(f"<small>👤 Sesión: <b>{st.session_state.usuario_activo}</b></small>",
@@ -495,12 +484,14 @@ elif st.session_state.menu == "Registrar":
                 except Exception as e:
                     st.error(f"❌ Error de conexión: {e}")
 
-# ── CONSULTA (libre por QR o manual) ──────────
+# ══════════════════════════════════════════════
+# CONSULTA — libre para todos (QR o manual)
+# ══════════════════════════════════════════════
 elif st.session_state.menu == "Consulta":
     st.title("🔍 CONSULTA CLÍNICA")
 
     if st.session_state.get("acceso_qr"):
-        st.markdown('<div class="badge-qr">📲 Acceso por escaneo QR — vista de historial</div>',
+        st.markdown('<div class="badge-qr">📲 Acceso por escaneo QR</div>',
                     unsafe_allow_html=True)
 
     doc_default = st.session_state.get("doc_precargado", "")
@@ -522,6 +513,7 @@ elif st.session_state.menu == "Consulta":
             tel_emer = dato(p, ["TEL",    "CONTACTO", "EMERGENCIA"])
             alertas  = dato(p, ["CONDICIONES", "ESPECIALES"])
 
+            # Tarjeta resumen — siempre visible
             st.markdown(f"""
             <div class="medical-card">
                 <h2 style='margin:0;'>👤 {p.get('NOMBRE','No registra')}</h2>
@@ -541,7 +533,6 @@ elif st.session_state.menu == "Consulta":
             # Descargas — solo si está autenticado
             if st.session_state.autenticado:
                 col_pdf, col_carnet = st.columns(2)
-
                 with col_pdf:
                     qp = qr_path(id_buscado)
                     hpdf = FPDF()
@@ -560,8 +551,7 @@ elif st.session_state.menu == "Consulta":
                     hpdf.set_font("Arial", "B", 14)
                     hpdf.cell(120, 10, "Historia Clinica - Tarjeta Vida QR", ln=False, align="C")
                     hpdf.ln(22)
-                    hpdf.set_font("Arial", "I", 8)
-                    hpdf.set_text_color(80, 80, 80)
+                    hpdf.set_font("Arial", "I", 8); hpdf.set_text_color(80, 80, 80)
                     hpdf.cell(0, 5, f"Enlace: {APP_BASE_URL}?doc={id_buscado}", ln=True, align="C")
                     hpdf.set_text_color(0, 0, 0); hpdf.ln(3)
                     hpdf.set_fill_color(230, 230, 230)
@@ -595,7 +585,6 @@ elif st.session_state.menu == "Consulta":
                             hpdf.ln(2)
                     try: os.unlink(qp)
                     except: pass
-
                     st.download_button("📥 Historia Clínica PDF",
                         hpdf.output(dest="S").encode("latin-1"),
                         f"HC_{id_buscado}.pdf")
@@ -607,10 +596,7 @@ elif st.session_state.menu == "Consulta":
                         f"Carnet_VidaQR_{id_buscado}.pdf",
                         mime="application/pdf")
 
-                st.info("💡 El carnet tiene 2 páginas: cara frontal y cara posterior. "
-                        "Imprime a tamaño **85.6 × 54 mm** (tarjeta de crédito).", icon="🖨️")
-            else:
-                st.info("🔒 Inicia sesión para descargar la historia clínica y el carnet.", icon="🔐")
+                st.info("💡 Imprime a tamaño **85.6 × 54 mm** (tarjeta de crédito).", icon="🖨️")
 
             # QR en pantalla — siempre visible
             st.markdown("---")
@@ -629,52 +615,50 @@ elif st.session_state.menu == "Consulta":
                 la historia clínica de **{p.get('NOMBRE', 'el paciente')}**.
                 """)
 
-            # Nueva evolución — solo si está autenticado
-            if st.session_state.autenticado:
-                with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
-                    with st.form("f_evo"):
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            v_mot = st.text_area("3. Motivo")
-                            v_val = st.text_area("2. Valoración")
-                            v_ant = st.text_area("7. Antecedentes")
-                            v_tal = st.text_input("4. Talla")
-                        with c2:
-                            v_pes = st.text_input("5. Peso")
-                            v_pre = st.text_input("6. Presión")
-                            v_med = st.text_area("8. Medicamentos")
-                            v_lab = st.text_area("9. Laboratorios")
-                            v_epi = st.text_area("10. Epicrisis")
+            # ── Nueva evolución — SIN login requerido ──
+            st.markdown("---")
+            with st.expander("➕ REGISTRAR NUEVA EVOLUCIÓN"):
+                with st.form("f_evo"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        v_mot = st.text_area("3. Motivo")
+                        v_val = st.text_area("2. Valoración")
+                        v_ant = st.text_area("7. Antecedentes")
+                        v_tal = st.text_input("4. Talla")
+                    with c2:
+                        v_pes = st.text_input("5. Peso")
+                        v_pre = st.text_input("6. Presión")
+                        v_med = st.text_area("8. Medicamentos")
+                        v_lab = st.text_area("9. Laboratorios")
+                        v_epi = st.text_area("10. Epicrisis")
 
-                        if st.form_submit_button("GUARDAR EVOLUCIÓN"):
-                            try:
-                                resp = requests.post(
-                                    "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse",
-                                    data={
-                                        "entry.2019369477": id_buscado,
-                                        "entry.1088523869": v_val,
-                                        "entry.611862537":  v_mot,
-                                        "entry.1275746503": v_tal,
-                                        "entry.949747647":  v_pes,
-                                        "entry.2091389798": v_pre,
-                                        "entry.889985940":  v_ant,
-                                        "entry.2016051626": v_med,
-                                        "entry.882053172":  v_lab,
-                                        "entry.616774918":  v_epi,
-                                    },
-                                    timeout=10
-                                )
-                                if resp.status_code in [200, 302]:
-                                    st.success("✅ Evolución guardada correctamente.")
-                                    st.cache_data.clear(); st.rerun()
-                                else:
-                                    st.error(f"❌ Error al guardar. Código HTTP: {resp.status_code}")
-                            except Exception as e:
-                                st.error(f"❌ Error de conexión: {e}")
-            else:
-                st.info("🔒 Inicia sesión para registrar evoluciones.", icon="🔐")
+                    if st.form_submit_button("GUARDAR EVOLUCIÓN"):
+                        try:
+                            resp = requests.post(
+                                "https://docs.google.com/forms/d/e/1FAIpQLSeCCQLkQZbbGw_WJPWzYOhZrm6aOgmTQjDsFRD_y4wV6rB8VA/formResponse",
+                                data={
+                                    "entry.2019369477": id_buscado,
+                                    "entry.1088523869": v_val,
+                                    "entry.611862537":  v_mot,
+                                    "entry.1275746503": v_tal,
+                                    "entry.949747647":  v_pes,
+                                    "entry.2091389798": v_pre,
+                                    "entry.889985940":  v_ant,
+                                    "entry.2016051626": v_med,
+                                    "entry.882053172":  v_lab,
+                                    "entry.616774918":  v_epi,
+                                },
+                                timeout=10
+                            )
+                            if resp.status_code in [200, 302]:
+                                st.success("✅ Evolución guardada correctamente.")
+                                st.cache_data.clear(); st.rerun()
+                            else:
+                                st.error(f"❌ Error al guardar. Código HTTP: {resp.status_code}")
+                        except Exception as e:
+                            st.error(f"❌ Error de conexión: {e}")
 
-            # Evoluciones — siempre visibles
+            # ── Evoluciones — siempre visibles ─────────
             st.subheader("📋 Evoluciones")
             if not h_p.empty:
                 for _, f in h_p.iterrows():
